@@ -8,15 +8,19 @@ describe('cart_items RLS', () => {
   let admin: TestUser
   let cartAId: string
   let productId: string
+  let productId2: string
 
   beforeAll(async () => {
     userA = await createTestUser('customer')
     userB = await createTestUser('customer')
     admin = await createTestUser('admin')
 
+    // ユニーク制約(cart_id, product_id)に依存せずRLSのみで拒否を検証するため、
+    // 2件のproductを取得してテストケースごとに異なるproduct_idを使う
     const adminClient = createAdminClient()
-    const { data: product } = await adminClient.from('products').select('id').limit(1).single()
-    productId = product!.id
+    const { data: products } = await adminClient.from('products').select('id').limit(2)
+    productId = products![0].id
+    productId2 = products![1].id
 
     const { data: cart } = await userA.client
       .from('carts')
@@ -49,9 +53,11 @@ describe('cart_items RLS', () => {
   })
 
   it('customer: userBはuserAのcartへINSERTできない', async () => {
+    // productId2(テストケース1と異なる商品)を使い、unique(cart_id, product_id)制約ではなく
+    // RLSポリシー(cart_items_write_own)のみによって拒否されることを検証する
     const { error } = await userB.client
       .from('cart_items')
-      .insert({ cart_id: cartAId, product_id: productId, quantity: 1 })
+      .insert({ cart_id: cartAId, product_id: productId2, quantity: 1 })
     expect(error).not.toBeNull()
   })
 
