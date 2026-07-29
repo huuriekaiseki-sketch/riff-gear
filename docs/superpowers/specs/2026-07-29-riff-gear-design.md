@@ -116,10 +116,27 @@ order_items
 
 ## RLS自動検証（Vitest）
 
-- テストユーザー2人（userA, userB）をSupabase Admin API経由で事前作成
-- userAのクライアントでuserBの `order_id` を直接SELECT/UPDATEしようとして、空配列またはエラーになることをアサート
-- customerロールのuserAが `products` の更新や管理者向けRPCを試みて拒否されることをアサート
+- テストユーザー2人（userA=customer, userB=customer）+ admin1人をSupabase Admin API経由で事前作成
 - 管理者ロール付与は `supabase.auth.admin.updateUserById()` でテストヘルパー化する
+
+### カバレッジ基準（検証完了の合格ライン）
+
+6テーブル（`products` / `carts` / `cart_items` / `orders` / `order_items` / `profiles`）それぞれについて、
+「許可されるべきケース」と「拒否されるべきケース」を最低1パターンずつ、customer・admin両ロールでテストする。
+下表の全マスが埋まった時点で「検証完了」とみなす（空欄は許容しない）。
+
+| テーブル | customerの許可ケース | customerの拒否ケース | adminの許可ケース |
+|---|---|---|---|
+| `products` | 誰でもSELECT可 | 自分でUPDATE/INSERT/DELETEを試みて拒否 | UPDATE/INSERT/DELETE可 |
+| `carts` | 自分のcartをSELECT/INSERT | userBが作ったcartをSELECT/UPDATEしようとして拒否 | 他人のcartをSELECT可（自分のcartとして書き込みはできない） |
+| `cart_items` | 自分のcartへのINSERT | userBのcart_itemsをSELECT/INSERT/DELETEしようとして拒否 | 他人のcart_itemsをSELECT可 |
+| `orders` | 自分のorderをSELECT／直接INSERTしようとして拒否（RPC経由のみ許可を別途確認） | userBのorderをSELECT、またはstatusをUPDATEしようとして拒否 | 他人のorderをSELECT・status UPDATE可 |
+| `order_items` | 自分のorderに紐づくitemをSELECT／直接INSERTしようとして拒否 | userBのorder_itemsをSELECTしようとして拒否 | 他人のorder_itemsをSELECT可 |
+| `profiles` | 自分のprofileをSELECT/UPDATE | userBのprofileをUPDATEしようとして拒否 | 他人のprofileをSELECT可 |
+
+補足:
+- `orders`/`order_items`の「customerの許可ケース」には、直接INSERTは拒否されるが `place_order` RPC経由なら成立することを確認するテストを含める（RLSと業務ロジックの境界を混同しないため）。
+- 上表はSELECT/INSERT/UPDATE/DELETEの代表ケースのみを示す最低ラインであり、全操作の総当たりは求めない。表が全て埋まった状態を「①評価設計の閾値」とし、実装計画（テスト項目）にそのままチェックリストとして転記する。
 
 ## 決済
 
