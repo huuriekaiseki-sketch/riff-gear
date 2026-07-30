@@ -15,21 +15,48 @@ export default async function ProductListPage() {
     return <p role="alert">商品の取得に失敗しました: {error.message}</p>
   }
 
+  const CATEGORY_LABEL: Record<string, string> = {
+    guitar: 'ギター',
+    keyboard: 'キーボード',
+    accessory: 'アクセサリー',
+  }
+
   return (
     <main>
-      <h1>Riff Gear</h1>
-      <ul>
+      <div className="mb-10">
+        <h1 className="text-3xl font-semibold tracking-tight text-foreground">Riff Gear</h1>
+        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+          ギター・キーボードなど、バンド機材のセレクトショップ
+        </p>
+      </div>
+      <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {products?.map((p) => (
-          <li key={p.id}>
-            <span>{p.name}</span>
-            <span>{p.category}</span>
-            <span>¥{p.price_cents.toLocaleString()}</span>
+          <li
+            key={p.id}
+            className="flex flex-col justify-between rounded-2xl border border-gray-200 bg-surface p-6 shadow-sm transition-shadow hover:shadow-md dark:border-gray-800"
+          >
+            <div>
+              <span className="inline-block rounded-full bg-secondary/10 px-3 py-1 text-xs font-medium text-secondary">
+                {CATEGORY_LABEL[p.category] ?? p.category}
+              </span>
+              <h2 className="mt-3 text-lg font-medium text-foreground">{p.name}</h2>
+              <p className="mt-1 text-xl font-semibold text-foreground">
+                ¥{p.price_cents.toLocaleString()}
+              </p>
+            </div>
             {p.stock === 0 ? (
-              <span>売り切れ</span>
+              <span className="mt-4 inline-flex w-fit items-center rounded-full bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                売り切れ
+              </span>
             ) : (
-              <form action={addToCart}>
+              <form action={addToCart} className="mt-4">
                 <input type="hidden" name="productId" value={p.id} />
-                <button type="submit">カートに追加</button>
+                <button
+                  type="submit"
+                  className="w-full rounded-full bg-primary px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+                >
+                  カートに追加
+                </button>
               </form>
             )}
           </li>
