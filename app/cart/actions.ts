@@ -26,26 +26,20 @@ async function getOrCreateCartId(supabase: Awaited<ReturnType<typeof createServe
 }
 
 // 商品をカートに追加する。既にカートにある商品なら数量を+1、なければ新規追加する。
+// DB側の add_cart_item 関数（INSERT ... ON CONFLICT ... DO UPDATE）を呼ぶだけにすることで、
+// 従来の SELECT→UPDATE/INSERT という read-then-write 方式で起こり得た
+// 連続追加時の数量取りこぼしを、DBのアトミックな処理に任せて解消する。
 export async function addToCart(formData: FormData) {
   const productId = formData.get('productId') as string
   const supabase = await createServerSupabaseClient()
   const cartId = await getOrCreateCartId(supabase)
 
-  const { data: existingItem } = await supabase
-    .from('cart_items')
-    .select('id, quantity')
-    .eq('cart_id', cartId)
-    .eq('product_id', productId)
-    .maybeSingle()
-
-  if (existingItem) {
-    await supabase
-      .from('cart_items')
-      .update({ quantity: existingItem.quantity + 1 })
-      .eq('id', existingItem.id)
-  } else {
-    await supabase.from('cart_items').insert({ cart_id: cartId, product_id: productId, quantity: 1 })
-  }
+  const { error } = await supabase.rpc('add_cart_item', {
+    p_cart_id: cartId,
+    p_product_id: productId,
+    p_quantity: 1,
+  })
+  if (error) throw new Error(error.message)
 
   revalidatePath('/')
   revalidatePath('/cart')
