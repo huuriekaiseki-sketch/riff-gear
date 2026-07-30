@@ -7,7 +7,7 @@ export default async function CartPage() {
   const supabase = await createServerSupabaseClient()
   const { data: userData } = await supabase.auth.getUser()
   if (!userData.user) {
-    return <p>カートを見るにはログインしてください。</p>
+    return <p className="text-gray-500 dark:text-gray-400">カートを見るにはログインしてください。</p>
   }
 
   const { data: cart } = await supabase
@@ -17,7 +17,7 @@ export default async function CartPage() {
     .maybeSingle()
 
   if (!cart) {
-    return <p>カートは空です。</p>
+    return <p className="text-gray-500 dark:text-gray-400">カートは空です。</p>
   }
 
   const { data: items } = await supabase
@@ -31,26 +31,42 @@ export default async function CartPage() {
   )
 
   return (
-    <main>
-      <h1>カート</h1>
-      <ul>
+    <main className="mx-auto max-w-2xl">
+      <h1 className="text-2xl font-semibold tracking-tight text-foreground">カート</h1>
+      <ul className="mt-6 divide-y divide-gray-200 rounded-2xl border border-gray-200 bg-surface shadow-sm dark:divide-gray-800 dark:border-gray-800">
         {items?.map((item: any) => (
-          <li key={item.id}>
-            {item.products.name} × {item.quantity} = ¥
-            {(item.products.price_cents * item.quantity).toLocaleString()}
+          <li key={item.id} className="flex items-center justify-between gap-4 px-6 py-4">
+            <div>
+              <p className="font-medium text-foreground">{item.products.name}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                × {item.quantity} = ¥
+                {(item.products.price_cents * item.quantity).toLocaleString()}
+              </p>
+            </div>
             <form action={removeFromCart}>
               <input type="hidden" name="itemId" value={item.id} />
-              <button type="submit">削除</button>
+              <button
+                type="submit"
+                className="rounded-full border border-gray-300 px-3 py-1 text-sm font-medium text-gray-600 transition-colors hover:border-danger hover:text-danger dark:border-gray-700 dark:text-gray-300"
+              >
+                削除
+              </button>
             </form>
           </li>
         ))}
       </ul>
-      <p>合計: ¥{total.toLocaleString()}</p>
-      <form action="/cart/checkout" method="post">
-        <button type="submit" disabled={!items?.length}>
-          注文する
-        </button>
-      </form>
+      <div className="mt-6 flex items-center justify-between rounded-2xl border border-gray-200 bg-surface p-6 shadow-sm dark:border-gray-800">
+        <p className="text-lg font-semibold text-foreground">合計: ¥{total.toLocaleString()}</p>
+        <form action="/cart/checkout" method="post">
+          <button
+            type="submit"
+            disabled={!items?.length}
+            className="rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            注文する
+          </button>
+        </form>
+      </div>
     </main>
   )
 }
