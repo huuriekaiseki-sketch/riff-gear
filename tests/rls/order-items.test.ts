@@ -8,24 +8,22 @@ describe('order_items RLS', () => {
   let admin: TestUser
   let orderAId: string
   let productId: string
-  let productOriginalStock: number
 
   beforeAll(async () => {
     userA = await createTestUser('customer')
     userB = await createTestUser('customer')
     admin = await createTestUser('admin')
 
-    // place_orderは在庫を実際に減らすため、stock > 0の商品のみを対象にする
-    // （afterAllで元の在庫数に戻すため、減算前の値も保持しておく）
+    // シードデータの共有商品を使うと、並列実行される他のテストファイルと
+    // 在庫を奪い合って「在庫不足」で失敗することがある(実際に発生した既知の不具合)。
+    // このテスト専用のダミー商品を作ることで、他のテストファイルと在庫を共有しない。
     const adminClient = createAdminClient()
     const { data: product } = await adminClient
       .from('products')
-      .select('id, stock')
-      .gt('stock', 0)
-      .limit(1)
+      .insert({ name: 'order-items.test.ts専用ダミー商品', category: 'accessory', price_cents: 1000, stock: 5 })
+      .select('id')
       .single()
     productId = product!.id
-    productOriginalStock = product!.stock
 
     const { data: cart } = await userA.client
       .from('carts')
@@ -52,9 +50,12 @@ describe('order_items RLS', () => {
       await adminClient.from('orders').delete().eq('id', orderAId)
     }
 
-    // place_orderが実際に減らした在庫を元の値に戻す
-    if (productId && typeof productOriginalStock === 'number') {
-      await adminClient.from('products').update({ stock: productOriginalStock }).eq('id', productId)
+    // このテスト専用ダミー商品を削除する。cart_itemsがまだ参照している可能性がある
+    // (place_orderに失敗した側のカートには商品が残ったままになるため)ので、
+    // productsを消す前にcart_itemsの参照を先に消しておく
+    if (productId) {
+      await adminClient.from('cart_items').delete().eq('product_id', productId)
+      await adminClient.from('products').delete().eq('id', productId)
     }
 
     await deleteTestUser(userA.id)
