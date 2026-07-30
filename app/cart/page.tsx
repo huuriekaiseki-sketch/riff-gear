@@ -3,7 +3,12 @@ import { removeFromCart } from './actions'
 
 // カートページ。ログインユーザーのカート明細を商品情報とJOINして表示し、
 // 合計金額の計算と各明細の削除フォームを提供する。
-export default async function CartPage() {
+export default async function CartPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>
+}) {
+  const { error: errorMessage } = await searchParams
   const supabase = await createServerSupabaseClient()
   const { data: userData } = await supabase.auth.getUser()
   if (!userData.user) {
@@ -33,6 +38,11 @@ export default async function CartPage() {
   return (
     <main className="mx-auto max-w-2xl">
       <h1 className="text-2xl font-semibold tracking-tight text-foreground">カート</h1>
+      {errorMessage && (
+        <p role="alert" className="mt-4 rounded-lg bg-danger/10 px-4 py-3 text-sm text-danger">
+          {errorMessage}
+        </p>
+      )}
       <ul className="mt-6 divide-y divide-gray-200 rounded-2xl border border-gray-200 bg-surface shadow-sm dark:divide-gray-800 dark:border-gray-800">
         {items?.map((item: any) => (
           <li key={item.id} className="flex items-center justify-between gap-4 px-6 py-4">

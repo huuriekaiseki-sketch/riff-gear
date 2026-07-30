@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 // ユーザーのカートを取得し、なければ作成してカートIDを返す。
@@ -29,10 +30,34 @@ async function getOrCreateCartId(supabase: Awaited<ReturnType<typeof createServe
 // DB側の add_cart_item 関数（INSERT ... ON CONFLICT ... DO UPDATE）を呼ぶだけにすることで、
 // 従来の SELECT→UPDATE/INSERT という read-then-write 方式で起こり得た
 // 連続追加時の数量取りこぼしを、DBのアトミックな処理に任せて解消する。
+//
+// 「このユーザーのカート内数量」が在庫を超えないよう、追加前にチェックする。
+// これは自分のカートに対する上限であり、他ユーザーが同時に同じ商品を
+// カートに入れている分までは考慮しない（在庫の最終的な排他制御は
+// place_order の FOR UPDATE ロックが担う）。
 export async function addToCart(formData: FormData) {
   const productId = formData.get('productId') as string
   const supabase = await createServerSupabaseClient()
   const cartId = await getOrCreateCartId(supabase)
+
+  const { data: product, error: productError } = await supabase
+    .from('products')
+    .select('stock')
+    .eq('id', productId)
+    .single()
+  if (productError) throw new Error(productError.message)
+
+  const { data: existingItem } = await supabase
+    .from('cart_items')
+    .select('quantity')
+    .eq('cart_id', cartId)
+    .eq('product_id', productId)
+    .maybeSingle()
+  const quantityInCart = existingItem?.quantity ?? 0
+
+  if (quantityInCart + 1 > product.stock) {
+    redirect('/?error=' + encodeURIComponent('在庫上限に達しているため、これ以上カートに追加できません'))
+  }
 
   const { error } = await supabase.rpc('add_cart_item', {
     p_cart_id: cartId,
