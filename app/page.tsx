@@ -1,5 +1,5 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { addToCart } from './cart/actions'
+import ProductCard from './ProductCard'
 
 // 商品一覧ページ。カテゴリ→名前順で全商品を取得し、在庫切れ(stock=0)、
 // または既に自分のカートに在庫上限まで入れている場合は
@@ -66,44 +66,16 @@ export default async function ProductListPage({
         {products?.map((p) => {
           const remaining = p.stock - (cartQuantityByProductId.get(p.id) ?? 0)
           return (
-            <li
+            <ProductCard
               key={p.id}
-              className="flex flex-col justify-between rounded-2xl border border-gray-200 bg-surface p-6 shadow-sm transition-shadow hover:shadow-md dark:border-gray-800"
-            >
-              <div>
-                <span className="inline-block rounded-full bg-secondary/10 px-3 py-1 text-xs font-medium text-secondary">
-                  {CATEGORY_LABEL[p.category] ?? p.category}
-                </span>
-                <h2 className="mt-3 text-lg font-medium text-foreground">{p.name}</h2>
-                <p className="mt-1 text-xl font-semibold text-foreground">
-                  ¥{p.price_cents.toLocaleString()}
-                </p>
-                {remaining > 0 && (
-                  <p
-                    className={`mt-1 text-sm ${
-                      remaining <= 3 ? 'font-medium text-warning' : 'text-gray-500 dark:text-gray-400'
-                    }`}
-                  >
-                    残り{remaining}個
-                  </p>
-                )}
-              </div>
-              {remaining <= 0 ? (
-                <span className="mt-4 inline-flex w-fit items-center rounded-full bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-                  売り切れ
-                </span>
-              ) : (
-                <form action={addToCart} className="mt-4">
-                  <input type="hidden" name="productId" value={p.id} />
-                  <button
-                    type="submit"
-                    className="w-full rounded-full bg-primary px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
-                  >
-                    カートに追加
-                  </button>
-                </form>
-              )}
-            </li>
+              product={{
+                id: p.id,
+                name: p.name,
+                categoryLabel: CATEGORY_LABEL[p.category] ?? p.category,
+                price_cents: p.price_cents,
+              }}
+              initialRemaining={remaining}
+            />
           )
         })}
       </ul>
