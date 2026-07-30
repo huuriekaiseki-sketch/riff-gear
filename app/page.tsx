@@ -43,6 +43,15 @@ export default async function ProductListPage() {
               <p className="mt-1 text-xl font-semibold text-foreground">
                 ¥{p.price_cents.toLocaleString()}
               </p>
+              {p.stock > 0 && (
+                <p
+                  className={`mt-1 text-sm ${
+                    p.stock <= 3 ? 'font-medium text-warning' : 'text-gray-500 dark:text-gray-400'
+                  }`}
+                >
+                  残り{p.stock}個
+                </p>
+              )}
             </div>
             {p.stock === 0 ? (
               <span className="mt-4 inline-flex w-fit items-center rounded-full bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">
