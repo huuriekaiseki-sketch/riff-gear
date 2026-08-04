@@ -1,6 +1,12 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { removeFromCart } from './actions'
 
+type CartItemRow = {
+  id: string
+  quantity: number
+  products: { name: string; price_cents: number }
+}
+
 // カートページ。ログインユーザーのカート明細を商品情報とJOINして表示し、
 // 合計金額の計算と各明細の削除フォームを提供する。
 export default async function CartPage({
@@ -25,13 +31,13 @@ export default async function CartPage({
     return <p className="text-gray-500 dark:text-gray-400">カートは空です。</p>
   }
 
-  const { data: items } = await supabase
+  const { data: items } = (await supabase
     .from('cart_items')
     .select('id, quantity, products(name, price_cents)')
-    .eq('cart_id', cart.id)
+    .eq('cart_id', cart.id)) as { data: CartItemRow[] | null }
 
   const total = (items ?? []).reduce(
-    (sum, item: any) => sum + item.quantity * item.products.price_cents,
+    (sum, item) => sum + item.quantity * item.products.price_cents,
     0
   )
 
@@ -44,7 +50,7 @@ export default async function CartPage({
         </p>
       )}
       <ul className="mt-6 divide-y divide-gray-200 rounded-2xl border border-gray-200 bg-surface shadow-sm dark:divide-gray-800 dark:border-gray-800">
-        {items?.map((item: any) => (
+        {items?.map((item) => (
           <li key={item.id} className="flex items-center justify-between gap-4 px-6 py-4">
             <div>
               <p className="font-medium text-foreground">{item.products.name}</p>

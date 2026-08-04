@@ -1,5 +1,11 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
+type OrderItemRow = {
+  quantity: number
+  price_cents_at_order: number
+  products: { name: string }
+}
+
 // 注文ステータスの表示用日本語ラベルとバッジ色
 const STATUS_LABEL: Record<string, string> = {
   received: '注文受付',
@@ -34,10 +40,10 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     )
   }
 
-  const { data: items } = await supabase
+  const { data: items } = (await supabase
     .from('order_items')
     .select('quantity, price_cents_at_order, products(name)')
-    .eq('order_id', id)
+    .eq('order_id', id)) as { data: OrderItemRow[] | null }
 
   return (
     <main className="mx-auto max-w-2xl">
@@ -50,7 +56,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         </span>
       </div>
       <ul className="mt-6 divide-y divide-gray-200 rounded-2xl border border-gray-200 bg-surface shadow-sm dark:divide-gray-800 dark:border-gray-800">
-        {items?.map((item: any, i: number) => (
+        {items?.map((item, i) => (
           <li key={i} className="flex items-center justify-between gap-4 px-6 py-4">
             <p className="font-medium text-foreground">{item.products.name}</p>
             <p className="text-sm text-gray-500 dark:text-gray-400">
