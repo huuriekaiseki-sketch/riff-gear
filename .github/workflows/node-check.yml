@@ -1,0 +1,33 @@
+# WHY: ci.ymlのtypecheck/lintがcheckout→setup-node→npm installを重複させないよう、
+# Reusable Workflow(workflow_call)に切り出す。呼び出し側は実行するnpm scriptだけを渡す。
+# (medical-inventory-vkumaiリポジトリのnode-check.ymlを踏襲)
+
+name: Node Check (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      run-script:
+        description: "実行するnpm run scriptの名前(package.jsonのscripts)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - run: npm install -g npm@11.6.2
+      - name: Install dependencies
+        run: npm ci
+      - name: Run npm run ${{ inputs.run-script }}
+        env:
+          RUN_SCRIPT: ${{ inputs.run-script }}
+        run: npm run "$RUN_SCRIPT"
