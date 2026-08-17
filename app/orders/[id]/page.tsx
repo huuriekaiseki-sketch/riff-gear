@@ -1,35 +1,16 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { cancelOrder } from '../actions'
+import {
+  STATUS_LABEL,
+  STATUS_COLOR,
+  PAYMENT_METHOD_LABEL,
+  PAYMENT_STATUS_LABEL,
+} from '@/lib/order-labels'
 
 type OrderItemRow = {
   quantity: number
   price_cents_at_order: number
   products: { name: string }
-}
-
-// 注文ステータスの表示用日本語ラベルとバッジ色
-const STATUS_LABEL: Record<string, string> = {
-  received: '注文受付',
-  preparing: '発送準備',
-  shipped: '発送済み',
-  cancelled: 'キャンセル',
-}
-const STATUS_COLOR: Record<string, string> = {
-  received: 'bg-secondary/10 text-secondary',
-  preparing: 'bg-warning/10 text-warning',
-  shipped: 'bg-success/10 text-success',
-  cancelled: 'bg-danger/10 text-danger',
-}
-
-// 支払い方法・支払いステータスの表示用日本語ラベル
-const PAYMENT_METHOD_LABEL: Record<string, string> = {
-  card: 'クレジットカード',
-  bank_transfer: '銀行振込',
-  cod: '代金引換',
-}
-const PAYMENT_STATUS_LABEL: Record<string, string> = {
-  pending: '支払い待ち',
-  paid: '支払い済み',
 }
 
 // 注文詳細ページ。注文本体と明細（商品名・数量・注文時単価）を取得して表示する。
@@ -94,9 +75,15 @@ export default async function OrderDetailPage({
           合計: ¥{order.total_cents.toLocaleString()}
         </p>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          {PAYMENT_METHOD_LABEL[order.payment_method] ?? order.payment_method}
-          {' ・ '}
-          {PAYMENT_STATUS_LABEL[order.payment_status] ?? order.payment_status}
+          {order.status === 'cancelled' ? (
+            <>{PAYMENT_METHOD_LABEL[order.payment_method] ?? order.payment_method}（注文はキャンセル済みのため支払いステータスは対象外です）</>
+          ) : (
+            <>
+              {PAYMENT_METHOD_LABEL[order.payment_method] ?? order.payment_method}
+              {' ・ '}
+              {PAYMENT_STATUS_LABEL[order.payment_status] ?? order.payment_status}
+            </>
+          )}
         </p>
       </div>
       {order.status === 'received' && (
