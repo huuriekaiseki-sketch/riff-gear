@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { cancelOrder } from '../actions'
 
 type OrderItemRow = {
   quantity: number
@@ -22,8 +23,15 @@ const STATUS_COLOR: Record<string, string> = {
 
 // 注文詳細ページ。注文本体と明細（商品名・数量・注文時単価）を取得して表示する。
 // RLSにより本人の注文以外は取得できないため、見つからない場合はエラーメッセージを出す。
-export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function OrderDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ error?: string }>
+}) {
   const { id } = await params
+  const { error: errorMessage } = await searchParams
   const supabase = await createServerSupabaseClient()
 
   const { data: order, error } = await supabase
@@ -55,6 +63,11 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           {STATUS_LABEL[order.status] ?? order.status}
         </span>
       </div>
+      {errorMessage && (
+        <p role="alert" className="mt-4 rounded-lg bg-danger/10 px-4 py-3 text-sm text-danger">
+          {errorMessage}
+        </p>
+      )}
       <ul className="mt-6 divide-y divide-gray-200 rounded-2xl border border-gray-200 bg-surface shadow-sm dark:divide-gray-800 dark:border-gray-800">
         {items?.map((item, i) => (
           <li key={i} className="flex items-center justify-between gap-4 px-6 py-4">
@@ -70,6 +83,17 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           合計: ¥{order.total_cents.toLocaleString()}
         </p>
       </div>
+      {order.status === 'received' && (
+        <form action={cancelOrder} className="mt-6 text-right">
+          <input type="hidden" name="orderId" value={order.id} />
+          <button
+            type="submit"
+            className="rounded-lg border border-danger px-4 py-2 text-sm font-medium text-danger transition-colors hover:bg-danger/10"
+          >
+            注文をキャンセルする
+          </button>
+        </form>
+      )}
     </main>
   )
 }
