@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // supabase start / db reset が生成するローカル専用の一時ファイル(git管理外)
+    "supabase/.temp/**",
   ]),
 ]);
 
