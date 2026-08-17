@@ -6,11 +6,21 @@ import { addToCart } from './cart/actions'
 type Product = {
   id: string
   name: string
+  category: string
   categoryLabel: string
   price_cents: number
 }
 
 type Status = 'idle' | 'pending' | 'done'
+
+// カテゴリごとのアクセントカラー(グラデーション)とアイコン。
+// 商品画像を持たないため、カテゴリの「顔」代わりのプレースホルダーに使う。
+const CATEGORY_STYLE: Record<string, { gradient: string; icon: string }> = {
+  guitar: { gradient: 'from-amber-400 via-orange-400 to-rose-400', icon: '🎸' },
+  keyboard: { gradient: 'from-indigo-400 via-purple-400 to-fuchsia-400', icon: '🎹' },
+  accessory: { gradient: 'from-teal-400 via-cyan-400 to-sky-400', icon: '🎛️' },
+}
+const DEFAULT_STYLE = { gradient: 'from-gray-300 via-gray-400 to-gray-500', icon: '🎵' }
 
 // 商品カード。「カートに追加」を押した瞬間に残数をその場で1つ減らす
 // (useOptimistic)。サーバーの応答(revalidatePathによる再取得)が返ると、
@@ -31,6 +41,7 @@ export default function ProductCard({
     (state: number, delta: number) => Math.max(state - delta, 0)
   )
   const [status, setStatus] = useState<Status>('idle')
+  const style = CATEGORY_STYLE[product.category] ?? DEFAULT_STYLE
 
   async function handleAddToCart(formData: FormData) {
     decrementOptimistic(1)
@@ -41,13 +52,20 @@ export default function ProductCard({
   }
 
   return (
-    <li className="flex flex-col justify-between rounded-2xl border border-gray-200 bg-surface p-6 shadow-sm transition-shadow hover:shadow-md dark:border-gray-800">
+    <li className="group flex flex-col justify-between rounded-2xl border border-gray-200/60 bg-surface p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-4px_rgba(0,0,0,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_2px_4px_rgba(0,0,0,0.06),0_16px_40px_-8px_rgba(0,0,0,0.16)] dark:border-gray-800/60">
       <div>
-        <span className="inline-block rounded-full bg-secondary/10 px-3 py-1 text-xs font-medium text-secondary">
+        <div
+          className={`mb-4 flex h-28 items-center justify-center rounded-xl bg-gradient-to-br text-4xl shadow-inner transition-transform duration-300 group-hover:scale-[1.03] ${style.gradient}`}
+        >
+          {style.icon}
+        </div>
+        <span
+          className={`inline-block rounded-full bg-gradient-to-r px-3 py-1 text-xs font-semibold text-white shadow-sm ${style.gradient}`}
+        >
           {product.categoryLabel}
         </span>
         <h2 className="mt-3 text-lg font-medium text-foreground">{product.name}</h2>
-        <p className="mt-1 text-xl font-semibold text-foreground">
+        <p className="mt-1 text-2xl font-bold tracking-tight text-foreground">
           ¥{product.price_cents.toLocaleString()}
         </p>
         {remaining > 0 && (
@@ -70,7 +88,7 @@ export default function ProductCard({
           <button
             type="submit"
             disabled={status === 'pending'}
-            className="w-full rounded-full bg-primary px-4 py-2 text-sm font-medium text-white transition-all duration-150 hover:scale-105 hover:shadow-md hover:opacity-90 disabled:cursor-wait disabled:opacity-80 disabled:hover:scale-100"
+            className="w-full rounded-full bg-gradient-to-r from-primary to-secondary px-4 py-2 text-sm font-medium text-white shadow-md transition-all duration-150 hover:scale-105 hover:shadow-lg hover:shadow-primary/30 disabled:cursor-wait disabled:opacity-80 disabled:hover:scale-100"
           >
             {status === 'pending' ? (
               <span className="flex items-center justify-center gap-2">
