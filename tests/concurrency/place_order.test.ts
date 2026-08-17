@@ -67,8 +67,8 @@ describe('place_order 同時実行時の在庫排他制御', () => {
 
   it('在庫1個の商品に2人が同時に注文しても、成功するのは1人だけで在庫は0のまま(マイナスにならない)', async () => {
     const [resultA, resultB] = await Promise.allSettled([
-      userA.client.rpc('place_order'),
-      userB.client.rpc('place_order'),
+      userA.client.rpc('place_order', { p_payment_method: 'card' }),
+      userB.client.rpc('place_order', { p_payment_method: 'card' }),
     ])
 
     const outcomes = [resultA, resultB].map((r) => {

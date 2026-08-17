@@ -71,13 +71,30 @@ export default async function CartPage({
           </li>
         ))}
       </ul>
-      <div className="mt-6 flex items-center justify-between rounded-2xl border border-gray-200 bg-surface p-6 shadow-sm dark:border-gray-800">
+      <div className="mt-6 rounded-2xl border border-gray-200 bg-surface p-6 shadow-sm dark:border-gray-800">
         <p className="text-lg font-semibold text-foreground">合計: ¥{total.toLocaleString()}</p>
-        <form action="/cart/checkout" method="post">
+        <form action="/cart/checkout" method="post" className="mt-4">
+          <fieldset>
+            <legend className="text-sm font-medium text-foreground">支払い方法</legend>
+            <div className="mt-2 flex flex-col gap-2 text-sm text-gray-600 dark:text-gray-300">
+              <label className="flex items-center gap-2">
+                <input type="radio" name="payment_method" value="card" defaultChecked />
+                クレジットカード
+              </label>
+              <label className="flex items-center gap-2">
+                <input type="radio" name="payment_method" value="bank_transfer" />
+                銀行振込
+              </label>
+              <label className="flex items-center gap-2">
+                <input type="radio" name="payment_method" value="cod" />
+                代金引換
+              </label>
+            </div>
+          </fieldset>
           <button
             type="submit"
             disabled={!items?.length}
-            className="rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+            className="mt-4 w-full rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
           >
             注文する
           </button>

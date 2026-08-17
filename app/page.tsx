@@ -62,9 +62,13 @@ export default async function ProductListPage({
 
   return (
     <main>
-      <div className="mb-10">
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground">Riff Gear</h1>
-        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+      <div className="relative mb-10">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-16 left-1/2 -z-10 h-64 w-[36rem] -translate-x-1/2 rounded-full bg-gradient-to-r from-primary/20 via-secondary/20 to-primary/20 blur-3xl"
+        />
+        <h1 className="text-4xl font-bold tracking-tight text-foreground">Riff Gear</h1>
+        <p className="mt-3 text-base text-gray-500 dark:text-gray-400">
           ギター・キーボードなど、バンド機材のセレクトショップ
         </p>
       </div>
@@ -129,6 +133,7 @@ export default async function ProductListPage({
               product={{
                 id: p.id,
                 name: p.name,
+                category: p.category,
                 categoryLabel: CATEGORY_LABEL[p.category] ?? p.category,
                 price_cents: p.price_cents,
               }}
