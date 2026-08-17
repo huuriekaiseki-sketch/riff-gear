@@ -1,19 +1,11 @@
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-
-// 注文ステータスの表示用日本語ラベルとバッジ色
-const STATUS_LABEL: Record<string, string> = {
-  received: '注文受付',
-  preparing: '発送準備',
-  shipped: '発送済み',
-  cancelled: 'キャンセル',
-}
-const STATUS_COLOR: Record<string, string> = {
-  received: 'bg-secondary/10 text-secondary',
-  preparing: 'bg-warning/10 text-warning',
-  shipped: 'bg-success/10 text-success',
-  cancelled: 'bg-danger/10 text-danger',
-}
+import {
+  STATUS_LABEL,
+  STATUS_COLOR,
+  PAYMENT_METHOD_LABEL,
+  PAYMENT_STATUS_LABEL,
+} from '@/lib/order-labels'
 
 // 注文履歴ページ。RLSにより`orders`は本人の行しか返らないため、
 // クエリ自体に user_id フィルタを書かなくてもユーザー間の分離が保たれる。
@@ -26,7 +18,7 @@ export default async function OrderHistoryPage() {
 
   const { data: orders, error } = await supabase
     .from('orders')
-    .select('id, status, total_cents, created_at')
+    .select('id, status, total_cents, created_at, payment_method, payment_status')
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -49,6 +41,17 @@ export default async function OrderHistoryPage() {
                 </p>
                 <p className="font-medium text-foreground">
                   ¥{order.total_cents.toLocaleString()}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {order.status === 'cancelled' ? (
+                    <>{PAYMENT_METHOD_LABEL[order.payment_method] ?? order.payment_method}（キャンセル済みのため支払いステータスは対象外）</>
+                  ) : (
+                    <>
+                      {PAYMENT_METHOD_LABEL[order.payment_method] ?? order.payment_method}
+                      {' ・ '}
+                      {PAYMENT_STATUS_LABEL[order.payment_status] ?? order.payment_status}
+                    </>
+                  )}
                 </p>
               </div>
               <span

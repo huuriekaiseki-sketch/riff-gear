@@ -28,7 +28,7 @@ export default function RootLayout({
       lang="ja"
       className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-gray-50 dark:bg-black">
+      <body className="flex min-h-full flex-col">
         <SiteHeader />
         <div className="mx-auto w-full max-w-5xl flex-1 px-6 py-10">{children}</div>
       </body>
