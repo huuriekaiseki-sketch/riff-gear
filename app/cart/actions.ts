@@ -77,3 +77,38 @@ export async function removeFromCart(formData: FormData) {
   await supabase.from('cart_items').delete().eq('id', itemId)
   revalidatePath('/cart')
 }
+
+// カート内の商品数量を+1/-1する。0以下になる場合は明細を削除する。
+// RLSにより自分のカートの明細しか更新できないため、cart_id所有者チェックは不要。
+export async function updateCartItemQuantity(formData: FormData) {
+  const itemId = formData.get('itemId') as string
+  const delta = Number(formData.get('delta'))
+  const supabase = await createServerSupabaseClient()
+
+  const { data: item, error: itemError } = await supabase
+    .from('cart_items')
+    .select('quantity, product_id, products(stock)')
+    .eq('id', itemId)
+    .single<{ quantity: number; product_id: string; products: { stock: number } }>()
+  if (itemError) throw new Error(itemError.message)
+
+  const nextQuantity = item.quantity + delta
+
+  if (nextQuantity <= 0) {
+    await supabase.from('cart_items').delete().eq('id', itemId)
+    revalidatePath('/cart')
+    return
+  }
+
+  if (nextQuantity > item.products.stock) {
+    redirect('/cart?error=' + encodeURIComponent('在庫上限に達しているため、これ以上増やせません'))
+  }
+
+  const { error } = await supabase
+    .from('cart_items')
+    .update({ quantity: nextQuantity })
+    .eq('id', itemId)
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/cart')
+}
