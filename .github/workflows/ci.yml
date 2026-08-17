@@ -4,22 +4,60 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  lint-and-typecheck:
+  typecheck:
+    uses: ./.github/workflows/node-check.yml
+    with:
+      run-script: typecheck
+
+  lint:
+    uses: ./.github/workflows/node-check.yml
+    with:
+      run-script: lint
+
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "24"
-          cache: "npm"
-
+          node-version: '24'
+          cache: 'npm'
       - run: npm install -g npm@11.6.2
+      - name: Install dependencies
+        run: npm ci
 
-      - run: npm ci
+      - uses: supabase/setup-cli@v3
+        with:
+          version: latest
 
-      - run: npm run lint
+      # WHY: 本番Supabaseの接続情報をCIに一切渡さないため、GitHub Secretsは使わず
+      # ローカルSupabaseをその場で起動し、発行される接続情報だけをテストに渡す。
+      # (medical-inventory-vkumaiリポジトリのe2e.ymlを踏襲)
+      - name: Start local Supabase
+        run: |
+          supabase start
+          supabase db reset
 
-      - run: npm run typecheck
+      - name: Export local Supabase connection info
+        run: |
+          echo "SUPABASE_API_URL=$(supabase status -o json | jq -r '.API_URL')" >> "$GITHUB_ENV"
+          echo "SUPABASE_ANON_KEY=$(supabase status -o json | jq -r '.ANON_KEY')" >> "$GITHUB_ENV"
+          echo "SUPABASE_SERVICE_ROLE_KEY=$(supabase status -o json | jq -r '.SERVICE_ROLE_KEY')" >> "$GITHUB_ENV"
+
+      - name: Run tests
+        run: npm test
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ env.SUPABASE_API_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ env.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ env.SUPABASE_SERVICE_ROLE_KEY }}
