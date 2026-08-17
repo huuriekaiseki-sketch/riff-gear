@@ -34,7 +34,7 @@ describe('orders RLS', () => {
       .from('cart_items')
       .insert({ cart_id: cart!.id, product_id: productId, quantity: 1 })
 
-    const { data: orderId, error } = await userA.client.rpc('place_order')
+    const { data: orderId, error } = await userA.client.rpc('place_order', { p_payment_method: 'card' })
     expect(error).toBeNull()
     orderAId = orderId as string
   })

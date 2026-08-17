@@ -65,7 +65,7 @@ describe('cancel_order RPC', () => {
       product_id: productId,
       quantity,
     })
-    const { data: orderId, error } = await user.client.rpc('place_order')
+    const { data: orderId, error } = await user.client.rpc('place_order', { p_payment_method: 'card' })
     expect(error).toBeNull()
     return orderId as string
   }
