@@ -1,6 +1,6 @@
 'use client'
 
-import { useOptimistic } from 'react'
+import { useOptimistic, useState } from 'react'
 import { addToCart } from './cart/actions'
 
 type Product = {
@@ -10,10 +10,15 @@ type Product = {
   price_cents: number
 }
 
+type Status = 'idle' | 'pending' | 'done'
+
 // 商品カード。「カートに追加」を押した瞬間に残数をその場で1つ減らす
 // (useOptimistic)。サーバーの応答(revalidatePathによる再取得)が返ると、
 // 実際のDB上の値に自動的に補正される。上限に達している場合は
 // addToCart側のサーバーチェックで拒否され、そのときは実際の値に戻る。
+//
+// ボタン自体はサーバーアクション完了中はスピナー付き「追加中...」、
+// 完了直後は「✓ 追加しました」に切り替わり、約1.2秒後に元の表示へ戻る。
 export default function ProductCard({
   product,
   initialRemaining,
@@ -25,10 +30,14 @@ export default function ProductCard({
     initialRemaining,
     (state: number, delta: number) => Math.max(state - delta, 0)
   )
+  const [status, setStatus] = useState<Status>('idle')
 
   async function handleAddToCart(formData: FormData) {
     decrementOptimistic(1)
+    setStatus('pending')
     await addToCart(formData)
+    setStatus('done')
+    setTimeout(() => setStatus('idle'), 1200)
   }
 
   return (
@@ -60,9 +69,26 @@ export default function ProductCard({
           <input type="hidden" name="productId" value={product.id} />
           <button
             type="submit"
-            className="w-full rounded-full bg-primary px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+            disabled={status === 'pending'}
+            className="w-full rounded-full bg-primary px-4 py-2 text-sm font-medium text-white transition-all duration-150 hover:scale-105 hover:shadow-md hover:opacity-90 disabled:cursor-wait disabled:opacity-80 disabled:hover:scale-100"
           >
-            カートに追加
+            {status === 'pending' ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
+                </svg>
+                追加中...
+              </span>
+            ) : status === 'done' ? (
+              <span className="flex items-center justify-center gap-1.5">✓ 追加しました</span>
+            ) : (
+              'カートに追加'
+            )}
           </button>
         </form>
       )}
