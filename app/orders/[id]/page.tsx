@@ -21,6 +21,17 @@ const STATUS_COLOR: Record<string, string> = {
   cancelled: 'bg-danger/10 text-danger',
 }
 
+// 支払い方法・支払いステータスの表示用日本語ラベル
+const PAYMENT_METHOD_LABEL: Record<string, string> = {
+  card: 'クレジットカード',
+  bank_transfer: '銀行振込',
+  cod: '代金引換',
+}
+const PAYMENT_STATUS_LABEL: Record<string, string> = {
+  pending: '支払い待ち',
+  paid: '支払い済み',
+}
+
 // 注文詳細ページ。注文本体と明細（商品名・数量・注文時単価）を取得して表示する。
 // RLSにより本人の注文以外は取得できないため、見つからない場合はエラーメッセージを出す。
 export default async function OrderDetailPage({
@@ -36,7 +47,7 @@ export default async function OrderDetailPage({
 
   const { data: order, error } = await supabase
     .from('orders')
-    .select('id, status, total_cents, created_at')
+    .select('id, status, total_cents, created_at, payment_method, payment_status')
     .eq('id', id)
     .single()
 
@@ -81,6 +92,11 @@ export default async function OrderDetailPage({
       <div className="mt-6 rounded-2xl border border-gray-200 bg-surface p-6 text-right shadow-sm dark:border-gray-800">
         <p className="text-lg font-semibold text-foreground">
           合計: ¥{order.total_cents.toLocaleString()}
+        </p>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          {PAYMENT_METHOD_LABEL[order.payment_method] ?? order.payment_method}
+          {' ・ '}
+          {PAYMENT_STATUS_LABEL[order.payment_status] ?? order.payment_status}
         </p>
       </div>
       {order.status === 'received' && (
