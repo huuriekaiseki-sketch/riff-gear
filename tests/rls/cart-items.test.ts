@@ -69,4 +69,43 @@ describe('cart_items RLS', () => {
     expect(error).toBeNull()
     expect(data?.length).toBe(1)
   })
+
+  it('customer: 自分のcart_itemsのquantityをUPDATEできる', async () => {
+    const { data: item } = await userA.client
+      .from('cart_items')
+      .select('id')
+      .eq('cart_id', cartAId)
+      .eq('product_id', productId)
+      .single()
+
+    const { error } = await userA.client
+      .from('cart_items')
+      .update({ quantity: 2 })
+      .eq('id', item!.id)
+    expect(error).toBeNull()
+
+    const { data: updated } = await userA.client
+      .from('cart_items')
+      .select('quantity')
+      .eq('id', item!.id)
+      .single()
+    expect(updated?.quantity).toBe(2)
+  })
+
+  it('customer: userBはuserAのcart_itemsをUPDATEできない', async () => {
+    const { data: item } = await userA.client
+      .from('cart_items')
+      .select('id')
+      .eq('cart_id', cartAId)
+      .eq('product_id', productId)
+      .single()
+
+    const { data, error } = await userB.client
+      .from('cart_items')
+      .update({ quantity: 99 })
+      .eq('id', item!.id)
+      .select()
+    expect(error).toBeNull()
+    expect(data?.length).toBe(0)
+  })
 })
