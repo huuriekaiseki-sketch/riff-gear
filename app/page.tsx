@@ -4,19 +4,36 @@ import ProductCard from './ProductCard'
 // 商品一覧ページ。カテゴリ→名前順で全商品を取得し、在庫切れ(stock=0)、
 // または既に自分のカートに在庫上限まで入れている場合は
 // カート追加ボタンの代わりに「売り切れ」表示に差し替える。
+const CATEGORIES = ['guitar', 'keyboard', 'accessory'] as const
+const CATEGORY_LABEL: Record<string, string> = {
+  guitar: 'ギター',
+  keyboard: 'キーボード',
+  accessory: 'アクセサリー',
+}
+
 export default async function ProductListPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>
+  searchParams: Promise<{ error?: string; category?: string; q?: string }>
 }) {
-  const { error: errorMessage } = await searchParams
+  const { error: errorMessage, category, q } = await searchParams
   const supabase = await createServerSupabaseClient()
 
-  const { data: products, error } = await supabase
+  let query = supabase
     .from('products')
     .select('id, name, category, price_cents, stock')
     .order('category')
     .order('name')
+
+  // 不正なカテゴリ値が来た場合は無視して全件表示にフォールバックする
+  if (category && (CATEGORIES as readonly string[]).includes(category)) {
+    query = query.eq('category', category)
+  }
+  if (q) {
+    query = query.ilike('name', `%${q}%`)
+  }
+
+  const { data: products, error } = await query
 
   if (error) {
     return <p role="alert">商品の取得に失敗しました: {error.message}</p>
@@ -43,12 +60,6 @@ export default async function ProductListPage({
     }
   }
 
-  const CATEGORY_LABEL: Record<string, string> = {
-    guitar: 'ギター',
-    keyboard: 'キーボード',
-    accessory: 'アクセサリー',
-  }
-
   return (
     <main>
       <div className="mb-10">
@@ -61,6 +72,53 @@ export default async function ProductListPage({
         <p role="alert" className="mb-6 rounded-lg bg-danger/10 px-4 py-3 text-sm text-danger">
           {errorMessage}
         </p>
+      )}
+      <form className="mb-6 flex flex-wrap items-center gap-3" action="/">
+        {category && <input type="hidden" name="category" value={category} />}
+        <input
+          type="search"
+          name="q"
+          defaultValue={q ?? ''}
+          placeholder="商品名で検索"
+          className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-transparent"
+        />
+        <button
+          type="submit"
+          className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700"
+        >
+          検索
+        </button>
+      </form>
+      <nav className="mb-8 flex flex-wrap gap-2" aria-label="カテゴリ絞り込み">
+        <a
+          href={q ? `/?q=${encodeURIComponent(q)}` : '/'}
+          className={`rounded-full px-4 py-1.5 text-sm ${
+            !category
+              ? 'bg-foreground text-background'
+              : 'border border-gray-300 dark:border-gray-700'
+          }`}
+        >
+          すべて
+        </a>
+        {CATEGORIES.map((c) => {
+          const href = `/?category=${c}${q ? `&q=${encodeURIComponent(q)}` : ''}`
+          return (
+            <a
+              key={c}
+              href={href}
+              className={`rounded-full px-4 py-1.5 text-sm ${
+                category === c
+                  ? 'bg-foreground text-background'
+                  : 'border border-gray-300 dark:border-gray-700'
+              }`}
+            >
+              {CATEGORY_LABEL[c]}
+            </a>
+          )
+        })}
+      </nav>
+      {products?.length === 0 && (
+        <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">該当する商品が見つかりませんでした。</p>
       )}
       <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {products?.map((p) => {
