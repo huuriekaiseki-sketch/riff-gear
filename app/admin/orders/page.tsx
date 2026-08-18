@@ -1,5 +1,12 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { updateOrderStatus } from './actions'
+import { updateOrderStatus, updatePaymentStatus } from './actions'
+import { PAYMENT_STATUS_LABEL } from '@/lib/order-labels'
+
+const PAYMENT_STATUSES = ['pending', 'paid'] as const
+const PAYMENT_STATUS_COLOR: Record<string, string> = {
+  pending: 'bg-warning/10 text-warning',
+  paid: 'bg-success/10 text-success',
+}
 
 const STATUSES = ['received', 'preparing', 'shipped', 'cancelled'] as const
 const STATUS_LABEL: Record<string, string> = {
@@ -33,7 +40,7 @@ export default async function AdminOrdersPage() {
 
   const { data: orders, error } = await supabase
     .from('orders')
-    .select('id, user_id, status, total_cents, created_at')
+    .select('id, user_id, status, total_cents, created_at, payment_method, payment_status')
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -55,6 +62,7 @@ export default async function AdminOrdersPage() {
               <th className="px-6 py-3 font-medium">ユーザー</th>
               <th className="px-6 py-3 font-medium">合計</th>
               <th className="px-6 py-3 font-medium">ステータス</th>
+              <th className="px-6 py-3 font-medium">支払い</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
@@ -73,6 +81,7 @@ export default async function AdminOrdersPage() {
                   <form action={updateOrderStatus} className="flex items-center gap-2">
                     <input type="hidden" name="orderId" value={order.id} />
                     <select
+                      key={order.status}
                       name="status"
                       defaultValue={order.status}
                       className={`rounded-full border-0 px-3 py-1 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 ${STATUS_COLOR[order.status] ?? 'bg-gray-100 text-gray-500'}`}
@@ -80,6 +89,29 @@ export default async function AdminOrdersPage() {
                       {STATUSES.map((s) => (
                         <option key={s} value={s}>
                           {STATUS_LABEL[s]}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="submit"
+                      className="rounded-full bg-primary px-3 py-1 text-xs font-medium text-white transition-opacity hover:opacity-90"
+                    >
+                      更新
+                    </button>
+                  </form>
+                </td>
+                <td className="px-6 py-4">
+                  <form action={updatePaymentStatus} className="flex items-center gap-2">
+                    <input type="hidden" name="orderId" value={order.id} />
+                    <select
+                      key={order.payment_status}
+                      name="paymentStatus"
+                      defaultValue={order.payment_status}
+                      className={`rounded-full border-0 px-3 py-1 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 ${PAYMENT_STATUS_COLOR[order.payment_status] ?? 'bg-gray-100 text-gray-500'}`}
+                    >
+                      {PAYMENT_STATUSES.map((s) => (
+                        <option key={s} value={s}>
+                          {PAYMENT_STATUS_LABEL[s]}
                         </option>
                       ))}
                     </select>
