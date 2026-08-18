@@ -28,13 +28,11 @@ export function pushViewed(
   return [item, ...withoutItem].slice(0, max)
 }
 
-// localStorageから履歴を読み出す。壊れたJSONや型が合わないデータが
+// 保存済みJSON文字列を履歴に変換する。壊れたJSONや型が合わないデータが
 // 入っていた場合は空履歴として扱う(閲覧履歴は消えても実害がないため)。
-export function loadRecentlyViewed(): RecentlyViewedItem[] {
-  if (typeof window === 'undefined') return []
+function parseHistory(raw: string | null): RecentlyViewedItem[] {
+  if (!raw) return []
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (!raw) return []
     const parsed: unknown = JSON.parse(raw)
     if (!Array.isArray(parsed)) return []
     return parsed.filter(
@@ -50,6 +48,50 @@ export function loadRecentlyViewed(): RecentlyViewedItem[] {
   } catch {
     return []
   }
+}
+
+// localStorageから履歴を読み出す。
+export function loadRecentlyViewed(): RecentlyViewedItem[] {
+  if (typeof window === 'undefined') return []
+  try {
+    return parseHistory(window.localStorage.getItem(STORAGE_KEY))
+  } catch {
+    return []
+  }
+}
+
+// --- useSyncExternalStore用のストアAPI ---
+// getSnapshotは「変化がなければ同一参照を返す」必要があるため、
+// localStorageの生文字列をキーに変換結果をキャッシュする。
+
+const EMPTY: RecentlyViewedItem[] = []
+let snapshotRaw: string | null = null
+let snapshotItems: RecentlyViewedItem[] = EMPTY
+
+export function subscribeRecentlyViewed(callback: () => void): () => void {
+  // 別タブでの閲覧はstorageイベントで反映される。同一タブ内は
+  // ページ遷移(トップに戻る)のたびに再マウントされるため購読不要。
+  window.addEventListener('storage', callback)
+  return () => window.removeEventListener('storage', callback)
+}
+
+export function getRecentlyViewedSnapshot(): RecentlyViewedItem[] {
+  let raw: string | null
+  try {
+    raw = window.localStorage.getItem(STORAGE_KEY)
+  } catch {
+    raw = null
+  }
+  if (raw !== snapshotRaw) {
+    snapshotRaw = raw
+    snapshotItems = parseHistory(raw)
+  }
+  return snapshotItems
+}
+
+// SSR時は履歴なしとして描画する(hydration不一致を避ける)
+export function getServerSnapshot(): RecentlyViewedItem[] {
+  return EMPTY
 }
 
 // 商品閲覧を履歴に記録する。プライベートブラウジング等でlocalStorageが

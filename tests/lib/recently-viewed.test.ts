@@ -3,6 +3,8 @@ import {
   pushViewed,
   loadRecentlyViewed,
   recordView,
+  getRecentlyViewedSnapshot,
+  getServerSnapshot,
   MAX_STORED,
   type RecentlyViewedItem,
 } from '@/lib/recently-viewed'
@@ -105,5 +107,33 @@ describe('recordView', () => {
     expect(() =>
       recordView({ id: 'a', name: '商品a', category: 'guitar', price_cents: 1000 })
     ).not.toThrow()
+  })
+})
+
+describe('getRecentlyViewedSnapshot', () => {
+  it('保存内容が変わらない間は同一参照を返す(useSyncExternalStoreの要件)', () => {
+    stubWindowWithStorage({
+      'riff-gear:recently-viewed': JSON.stringify([makeItem('a', 10)]),
+    })
+    const first = getRecentlyViewedSnapshot()
+    const second = getRecentlyViewedSnapshot()
+    expect(second).toBe(first)
+    expect(first.map((h) => h.id)).toEqual(['a'])
+  })
+
+  it('recordView後は新しい履歴を返す', () => {
+    stubWindowWithStorage({
+      'riff-gear:recently-viewed': JSON.stringify([makeItem('a', 10)]),
+    })
+    const before = getRecentlyViewedSnapshot()
+    recordView({ id: 'b', name: '商品b', category: 'keyboard', price_cents: 2000 })
+    const after = getRecentlyViewedSnapshot()
+    expect(after).not.toBe(before)
+    expect(after.map((h) => h.id)).toEqual(['b', 'a'])
+  })
+
+  it('getServerSnapshotは常に空配列(同一参照)を返す', () => {
+    expect(getServerSnapshot()).toBe(getServerSnapshot())
+    expect(getServerSnapshot()).toEqual([])
   })
 })

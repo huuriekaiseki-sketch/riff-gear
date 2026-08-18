@@ -2,22 +2,27 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useSyncExternalStore } from 'react'
 import { CATEGORY_LABEL, CATEGORY_STYLE, DEFAULT_STYLE } from '@/lib/categories'
-import { loadRecentlyViewed, type RecentlyViewedItem } from '@/lib/recently-viewed'
+import {
+  getRecentlyViewedSnapshot,
+  getServerSnapshot,
+  subscribeRecentlyViewed,
+} from '@/lib/recently-viewed'
 
 const MAX_DISPLAY = 4
 
-// トップページ下部の「最近見た商品」。履歴はlocalStorageにしか無いため
-// クライアントコンポーネントとして初回マウント時に読み出す。
-// SSRでは履歴が空でレンダリングされるので、useEffectで読むことで
-// サーバーとクライアントのHTML不一致(hydration error)を避けている。
+// トップページ下部の「最近見た商品」。履歴はlocalStorage(外部ストア)にしか
+// 無いため、useSyncExternalStoreで読み出す。サーバースナップショットは常に
+// 空なのでSSR/hydration時は非表示で描画され、直後にクライアントの履歴で
+// 再描画される(HTML不一致エラーを避けつつeffect内setStateも使わない)。
 export default function RecentlyViewed() {
-  const [items, setItems] = useState<RecentlyViewedItem[]>([])
-
-  useEffect(() => {
-    setItems(loadRecentlyViewed().slice(0, MAX_DISPLAY))
-  }, [])
+  const history = useSyncExternalStore(
+    subscribeRecentlyViewed,
+    getRecentlyViewedSnapshot,
+    getServerSnapshot
+  )
+  const items = history.slice(0, MAX_DISPLAY)
 
   if (items.length === 0) return null
 
