@@ -88,15 +88,14 @@ export default function ProductCard({
         <p className="mt-1 text-2xl font-bold tracking-tight text-foreground">
           ¥{product.price_cents.toLocaleString()}
         </p>
-        {remaining > 0 && (
-          <p
-            className={`mt-1 text-sm ${
-              remaining <= 3 ? 'font-medium text-warning' : 'text-gray-500 dark:text-gray-400'
-            }`}
-          >
-            残り{remaining}個
-          </p>
-        )}
+        {remaining > 0 &&
+          (remaining <= 3 ? (
+            <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-warning/15 px-2.5 py-0.5 text-xs font-semibold text-warning">
+              残りわずか{remaining}点
+            </span>
+          ) : (
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">残り{remaining}個</p>
+          ))}
       </div>
       {remaining <= 0 ? (
         <span className="mt-4 inline-flex w-fit items-center rounded-full bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">
