@@ -24,6 +24,11 @@ jobs:
     with:
       run-script: lint
 
+  build:
+    uses: ./.github/workflows/node-check.yml
+    with:
+      run-script: build
+
   test:
     runs-on: ubuntu-latest
     steps:
