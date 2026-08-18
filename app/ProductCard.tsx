@@ -1,8 +1,10 @@
 'use client'
 
 import Image from 'next/image'
+import Link from 'next/link'
 import { useOptimistic, useState } from 'react'
 import { addToCart } from './cart/actions'
+import { CATEGORY_STYLE, DEFAULT_STYLE } from '@/lib/categories'
 
 type Product = {
   id: string
@@ -13,29 +15,6 @@ type Product = {
 }
 
 type Status = 'idle' | 'pending' | 'done'
-
-// カテゴリごとのアクセントカラー(グラデーション、バッジ用)と代表写真。
-// 商品ごとの実写真は持たないため、Unsplashのライセンスフリー写真(商用利用可・
-// クレジット表記不要)をカテゴリの「顔」代わりに使う。特定ブランドの商品写真では
-// なく、カテゴリを象徴する汎用的な一枚を採用している。
-const CATEGORY_STYLE: Record<string, { gradient: string; photoUrl: string }> = {
-  guitar: {
-    gradient: 'from-amber-400 via-orange-400 to-rose-400',
-    photoUrl: 'https://images.unsplash.com/photo-1520985878371-887e7b0553c5?auto=format&fit=crop&w=800&q=80',
-  },
-  keyboard: {
-    gradient: 'from-indigo-400 via-purple-400 to-fuchsia-400',
-    photoUrl: 'https://images.unsplash.com/photo-1598653222000-6b7b7a552625?auto=format&fit=crop&w=800&q=80',
-  },
-  accessory: {
-    gradient: 'from-teal-400 via-cyan-400 to-sky-400',
-    photoUrl: 'https://images.unsplash.com/photo-1527865118650-b28bc059d09a?auto=format&fit=crop&w=800&q=80',
-  },
-}
-const DEFAULT_STYLE = {
-  gradient: 'from-gray-300 via-gray-400 to-gray-500',
-  photoUrl: 'https://images.unsplash.com/photo-1520985878371-887e7b0553c5?auto=format&fit=crop&w=800&q=80',
-}
 
 // 商品カード。「カートに追加」を押した瞬間に残数をその場で1つ減らす
 // (useOptimistic)。サーバーの応答(revalidatePathによる再取得)が返ると、
@@ -69,22 +48,28 @@ export default function ProductCard({
   return (
     <li className="group flex flex-col justify-between rounded-2xl border border-gray-200/60 bg-surface p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-4px_rgba(0,0,0,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_2px_4px_rgba(0,0,0,0.06),0_16px_40px_-8px_rgba(0,0,0,0.16)] dark:border-gray-800/60">
       <div>
-        <div className="relative mb-4 h-28 overflow-hidden rounded-xl shadow-inner">
-          <Image
-            src={style.photoUrl}
-            alt={product.categoryLabel}
-            fill
-            sizes="(min-width: 1024px) 320px, (min-width: 640px) 45vw, 90vw"
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
-          />
-          <div className={`absolute inset-0 bg-gradient-to-t ${style.gradient} opacity-25`} />
-        </div>
+        <Link href={`/products/${product.id}`} className="block">
+          <div className="relative mb-4 h-28 overflow-hidden rounded-xl shadow-inner">
+            <Image
+              src={style.photoUrl}
+              alt={product.categoryLabel}
+              fill
+              sizes="(min-width: 1024px) 320px, (min-width: 640px) 45vw, 90vw"
+              className="object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+            <div className={`absolute inset-0 bg-gradient-to-t ${style.gradient} opacity-25`} />
+          </div>
+        </Link>
         <span
           className={`inline-block rounded-full bg-gradient-to-r px-3 py-1 text-xs font-semibold text-white shadow-sm ${style.gradient}`}
         >
           {product.categoryLabel}
         </span>
-        <h2 className="mt-3 text-lg font-medium text-foreground">{product.name}</h2>
+        <h2 className="mt-3 text-lg font-medium text-foreground">
+          <Link href={`/products/${product.id}`} className="hover:underline">
+            {product.name}
+          </Link>
+        </h2>
         <p className="mt-1 text-2xl font-bold tracking-tight text-foreground">
           ¥{product.price_cents.toLocaleString()}
         </p>
