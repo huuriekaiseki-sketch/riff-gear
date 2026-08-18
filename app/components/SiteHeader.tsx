@@ -20,6 +20,9 @@ export default async function SiteHeader() {
           </Link>
           {isLoggedIn && (
             <>
+              <Link href="/favorites" className="transition-colors hover:text-primary">
+                お気に入り
+              </Link>
               <Link href="/cart" className="transition-colors hover:text-primary">
                 カート
               </Link>

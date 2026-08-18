@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { CATEGORY_LABEL, CATEGORY_STYLE, DEFAULT_STYLE } from '@/lib/categories'
 import { addToCart } from '@/app/cart/actions'
+import FavoriteButton from '@/app/favorites/FavoriteButton'
 import RecordView from './RecordView'
 
 // 商品詳細ページ。一覧と同じく「在庫 − 自分のカート内数量」を実質の残数として
@@ -27,7 +28,16 @@ export default async function ProductDetailPage({
 
   const { data: userData } = await supabase.auth.getUser()
   let quantityInCart = 0
+  let isFavorited = false
   if (userData.user) {
+    const { data: favorite } = await supabase
+      .from('favorites')
+      .select('id')
+      .eq('user_id', userData.user.id)
+      .eq('product_id', product.id)
+      .maybeSingle()
+    isFavorited = !!favorite
+
     const { data: cart } = await supabase
       .from('carts')
       .select('id')
@@ -82,7 +92,12 @@ export default async function ProductDetailPage({
           >
             {categoryLabel}
           </span>
-          <h1 className="mt-4 text-3xl font-bold tracking-tight text-foreground">{product.name}</h1>
+          <div className="mt-4 flex items-start justify-between gap-4">
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">{product.name}</h1>
+            {userData.user && (
+              <FavoriteButton productId={product.id} initialIsFavorited={isFavorited} />
+            )}
+          </div>
           <p className="mt-3 text-3xl font-bold tracking-tight text-foreground">
             ¥{product.price_cents.toLocaleString()}
           </p>
