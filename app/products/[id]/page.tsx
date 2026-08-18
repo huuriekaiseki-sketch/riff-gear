@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { CATEGORY_LABEL, CATEGORY_STYLE, DEFAULT_STYLE } from '@/lib/categories'
 import { addToCart } from '@/app/cart/actions'
+import ReturnWarrantyBadge from '@/app/components/ReturnWarrantyBadge'
 import RecordView from './RecordView'
 
 // 商品詳細ページ。一覧と同じく「在庫 − 自分のカート内数量」を実質の残数として
@@ -109,6 +110,9 @@ export default async function ProductDetailPage({
               </button>
             </form>
           )}
+          <div className="mt-6">
+            <ReturnWarrantyBadge />
+          </div>
         </div>
       </div>
     </main>
