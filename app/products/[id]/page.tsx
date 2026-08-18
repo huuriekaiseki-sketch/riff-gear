@@ -4,8 +4,12 @@ import { notFound } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { CATEGORY_LABEL, CATEGORY_STYLE, DEFAULT_STYLE } from '@/lib/categories'
 import { addToCart } from '@/app/cart/actions'
+import FavoriteButton from '@/app/favorites/FavoriteButton'
 import ReturnWarrantyBadge from '@/app/components/ReturnWarrantyBadge'
 import RecordView from './RecordView'
+import RelatedProducts from './RelatedProducts'
+
+const RELATED_LIMIT = 4
 
 // 商品詳細ページ。一覧と同じく「在庫 − 自分のカート内数量」を実質の残数として
 // 扱い、残数0なら売り切れ表示に差し替える。閲覧はRecordView(クライアント)経由で
@@ -28,7 +32,16 @@ export default async function ProductDetailPage({
 
   const { data: userData } = await supabase.auth.getUser()
   let quantityInCart = 0
+  let isFavorited = false
   if (userData.user) {
+    const { data: favorite } = await supabase
+      .from('favorites')
+      .select('id')
+      .eq('user_id', userData.user.id)
+      .eq('product_id', product.id)
+      .maybeSingle()
+    isFavorited = !!favorite
+
     const { data: cart } = await supabase
       .from('carts')
       .select('id')
@@ -48,6 +61,16 @@ export default async function ProductDetailPage({
 
   const categoryLabel = CATEGORY_LABEL[product.category] ?? product.category
   const style = CATEGORY_STYLE[product.category] ?? DEFAULT_STYLE
+
+  // 同カテゴリ・在庫あり・自分自身を除いた商品を関連商品として表示する
+  const { data: relatedProducts } = await supabase
+    .from('products')
+    .select('id, name, category, price_cents')
+    .eq('category', product.category)
+    .neq('id', product.id)
+    .gt('stock', 0)
+    .order('name')
+    .limit(RELATED_LIMIT)
 
   return (
     <main>
@@ -83,7 +106,12 @@ export default async function ProductDetailPage({
           >
             {categoryLabel}
           </span>
-          <h1 className="mt-4 text-3xl font-bold tracking-tight text-foreground">{product.name}</h1>
+          <div className="mt-4 flex items-start justify-between gap-4">
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">{product.name}</h1>
+            {userData.user && (
+              <FavoriteButton productId={product.id} initialIsFavorited={isFavorited} />
+            )}
+          </div>
           <p className="mt-3 text-3xl font-bold tracking-tight text-foreground">
             ¥{product.price_cents.toLocaleString()}
           </p>
@@ -115,6 +143,7 @@ export default async function ProductDetailPage({
           </div>
         </div>
       </div>
+      <RelatedProducts products={relatedProducts ?? []} />
     </main>
   )
 }
