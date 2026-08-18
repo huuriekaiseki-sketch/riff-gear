@@ -6,6 +6,7 @@ import { useOptimistic, useState } from 'react'
 import { addToCart } from './cart/actions'
 import FavoriteButton from './favorites/FavoriteButton'
 import { CATEGORY_STYLE, DEFAULT_STYLE } from '@/lib/categories'
+import ReturnWarrantyBadge from './components/ReturnWarrantyBadge'
 
 type Product = {
   id: string
@@ -89,6 +90,9 @@ export default function ProductCard({
           ) : (
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">残り{remaining}個</p>
           ))}
+        <div className="mt-3">
+          <ReturnWarrantyBadge />
+        </div>
       </div>
       {remaining <= 0 ? (
         <span className="mt-4 inline-flex w-fit items-center rounded-full bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">
