@@ -26,6 +26,9 @@ export default async function SiteHeader() {
               <Link href="/orders" className="transition-colors hover:text-primary">
                 注文履歴
               </Link>
+              <Link href="/profile" className="transition-colors hover:text-primary">
+                プロフィール
+              </Link>
             </>
           )}
           {isAdmin && (

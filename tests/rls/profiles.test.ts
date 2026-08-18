@@ -11,13 +11,19 @@ describe('profiles RLS', () => {
     userB = await createTestUser('customer')
     admin = await createTestUser('admin')
 
-    await userA.client.from('profiles').insert({ id: userA.id, display_name: 'User A' })
+    await userA.client.from('profiles').update({ display_name: 'User A' }).eq('id', userA.id)
   })
 
   afterAll(async () => {
     await deleteTestUser(userA.id)
     await deleteTestUser(userB.id)
     await deleteTestUser(admin.id)
+  })
+
+  it('サインアップ時にprofile行が自動作成される', async () => {
+    const { data, error } = await userB.client.from('profiles').select('id').eq('id', userB.id).single()
+    expect(error).toBeNull()
+    expect(data?.id).toBe(userB.id)
   })
 
   it('customer: 自分のprofileをSELECT/UPDATEできる', async () => {
