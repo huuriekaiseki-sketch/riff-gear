@@ -6,6 +6,9 @@ import { CATEGORY_LABEL, CATEGORY_STYLE, DEFAULT_STYLE } from '@/lib/categories'
 import { addToCart } from '@/app/cart/actions'
 import ReturnWarrantyBadge from '@/app/components/ReturnWarrantyBadge'
 import RecordView from './RecordView'
+import RelatedProducts from './RelatedProducts'
+
+const RELATED_LIMIT = 4
 
 // 商品詳細ページ。一覧と同じく「在庫 − 自分のカート内数量」を実質の残数として
 // 扱い、残数0なら売り切れ表示に差し替える。閲覧はRecordView(クライアント)経由で
@@ -48,6 +51,16 @@ export default async function ProductDetailPage({
 
   const categoryLabel = CATEGORY_LABEL[product.category] ?? product.category
   const style = CATEGORY_STYLE[product.category] ?? DEFAULT_STYLE
+
+  // 同カテゴリ・在庫あり・自分自身を除いた商品を関連商品として表示する
+  const { data: relatedProducts } = await supabase
+    .from('products')
+    .select('id, name, category, price_cents')
+    .eq('category', product.category)
+    .neq('id', product.id)
+    .gt('stock', 0)
+    .order('name')
+    .limit(RELATED_LIMIT)
 
   return (
     <main>
@@ -115,6 +128,7 @@ export default async function ProductDetailPage({
           </div>
         </div>
       </div>
+      <RelatedProducts products={relatedProducts ?? []} />
     </main>
   )
 }
