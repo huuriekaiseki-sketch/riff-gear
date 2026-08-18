@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { removeFromCart, updateCartItemQuantity } from './actions'
 import CheckoutForm from './CheckoutForm'
+import ShippingProgress from './ShippingProgress'
 
 type CartItemRow = {
   id: string
@@ -125,6 +126,7 @@ export default async function CartPage({
       </ul>
       <div className="mt-6 rounded-2xl border border-gray-200 bg-surface p-6 shadow-sm dark:border-gray-800">
         <p className="text-lg font-semibold text-foreground">合計: ¥{total.toLocaleString()}</p>
+        <ShippingProgress totalCents={total} />
         {hasOverStockItem && (
           <p role="alert" className="mt-2 text-sm text-danger">
             在庫を超えている商品があります。数量を調整してから注文してください
