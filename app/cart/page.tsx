@@ -3,10 +3,13 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { removeFromCart, updateCartItemQuantity } from './actions'
 import CheckoutForm from './CheckoutForm'
 import ShippingProgress from './ShippingProgress'
+import ReservationCountdown from './ReservationCountdown'
+import { RESERVATION_MINUTES, getReservationCutoffISOString } from '@/lib/cartReservation'
 
 type CartItemRow = {
   id: string
   quantity: number
+  created_at: string
   products: { name: string; price_cents: number; stock: number }
 }
 
@@ -30,10 +33,20 @@ export default async function CartPage({
     .eq('user_id', userData.user.id)
     .maybeSingle()
 
+  if (cart) {
+    // 確保時間(RESERVATION_MINUTES)を過ぎた明細を表示前に遅延削除する。
+    // 常駐cronサーバーを持たないため、カートページへのアクセスを契機に掃除する。
+    await supabase
+      .from('cart_items')
+      .delete()
+      .eq('cart_id', cart.id)
+      .lt('created_at', getReservationCutoffISOString())
+  }
+
   const { data: items } = cart
     ? ((await supabase
         .from('cart_items')
-        .select('id, quantity, products(name, price_cents, stock)')
+        .select('id, quantity, created_at, products(name, price_cents, stock)')
         .eq('cart_id', cart.id)) as { data: CartItemRow[] | null })
     : { data: null }
 
@@ -60,6 +73,9 @@ export default async function CartPage({
   return (
     <main className="mx-auto max-w-2xl">
       <h1 className="text-2xl font-semibold tracking-tight text-foreground">カート</h1>
+      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        カート内の商品は追加から{RESERVATION_MINUTES}分間だけ在庫を確保します。時間を過ぎると自動的にカートから削除されます
+      </p>
       {errorMessage && (
         <p role="alert" className="mt-4 rounded-lg bg-danger/10 px-4 py-3 text-sm text-danger">
           {errorMessage}
@@ -80,6 +96,7 @@ export default async function CartPage({
                     在庫が{item.products.stock}個に減っています。数量を調整してください
                   </p>
                 )}
+                <ReservationCountdown createdAt={item.created_at} />
               </div>
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1 rounded-full border border-gray-300 dark:border-gray-700">
