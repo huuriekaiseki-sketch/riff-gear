@@ -1,15 +1,11 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import ProductCard from './ProductCard'
+import RecentlyViewed from './components/RecentlyViewed'
+import { CATEGORIES, CATEGORY_LABEL } from '@/lib/categories'
 
 // 商品一覧ページ。カテゴリ→名前順で全商品を取得し、在庫切れ(stock=0)、
 // または既に自分のカートに在庫上限まで入れている場合は
 // カート追加ボタンの代わりに「売り切れ」表示に差し替える。
-const CATEGORIES = ['guitar', 'keyboard', 'accessory'] as const
-const CATEGORY_LABEL: Record<string, string> = {
-  guitar: 'ギター',
-  keyboard: 'キーボード',
-  accessory: 'アクセサリー',
-}
 
 export default async function ProductListPage({
   searchParams,
@@ -142,6 +138,7 @@ export default async function ProductListPage({
           )
         })}
       </ul>
+      <RecentlyViewed />
     </main>
   )
 }

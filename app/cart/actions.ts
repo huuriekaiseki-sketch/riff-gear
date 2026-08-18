@@ -68,6 +68,8 @@ export async function addToCart(formData: FormData) {
 
   revalidatePath('/')
   revalidatePath('/cart')
+  // 商品詳細ページからの追加でも残数表示が最新になるよう、詳細ページも再検証する
+  revalidatePath(`/products/${productId}`)
 }
 
 // カートから商品を削除する。RLSにより自分のカートの明細しか削除できない。
