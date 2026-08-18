@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: リポジトリのAIDD運用方針について
+    url: https://github.com/huuriekaiseki-sketch/riff-gear/blob/main/docs/agents/known-failure-patterns.md
+    about: 既知の失敗パターンや設計方針を確認してから起票したい場合はこちら
