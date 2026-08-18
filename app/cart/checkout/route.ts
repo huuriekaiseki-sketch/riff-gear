@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { notifyAdminOfOrder } from '@/lib/webhook'
+import { getLowStockThreshold, notifyAdminOfLowStock, notifyAdminOfOrder } from '@/lib/webhook'
 
 const PAYMENT_METHODS = ['card', 'bank_transfer', 'cod', 'convenience_store', 'qr_code'] as const
 const INSTANT_PAYMENT_METHODS: (typeof PAYMENT_METHODS)[number][] = ['card', 'qr_code']
@@ -65,7 +65,7 @@ async function notifyAdminOrderPlaced(
     const [{ data: orderRow }, { data: profile }] = await Promise.all([
       supabase
         .from('orders')
-        .select('total_cents, order_items(quantity, price_cents_at_order, products(name))')
+        .select('total_cents, order_items(quantity, price_cents_at_order, products(name, stock))')
         .eq('id', orderId)
         .single(),
       supabase
@@ -94,6 +94,14 @@ async function notifyAdminOrderPlaced(
         }
       }),
     })
+
+    const threshold = getLowStockThreshold()
+    const lowStockItems = (orderRow?.order_items ?? [])
+      .map((item) => (Array.isArray(item.products) ? item.products[0] : item.products) as { name: string; stock: number } | null)
+      .filter((product): product is { name: string; stock: number } => product !== null && product.stock <= threshold)
+      .map((product) => ({ productName: product.name, stock: product.stock }))
+
+    await notifyAdminOfLowStock(lowStockItems)
   } catch (err) {
     console.error('注文Webhook通知用データの取得に失敗しました', err)
   }
