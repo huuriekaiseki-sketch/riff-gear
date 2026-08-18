@@ -1,0 +1,77 @@
+name: 機能アイデア・改善提案
+description: 新機能の追加や既存機能の改善に関する提案。ブレインストーミングで出たアイデアや、人間・AIエージェント(Claude Code、Codex等)が起票する場合はこのフォームを使う。
+title: "[機能名] を簡潔に"
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## このテンプレートについて
+
+        riff-gearでは、人間だけでなく複数のAIエージェント(Claude Code、Codex など)がissueを起票・参照します。
+        どのエージェントが読んでも同じ粒度で状況を理解できるよう、以下の構成に沿って記入してください。
+
+        - **背景**: なぜこのissueが必要なのか。ブレインストーミングの経緯、ユーザーからの要望、既知の不具合など
+        - **やること**: 具体的な作業項目。順序が重要な場合は番号付きリストで明記する
+        - **関連**: 関連する既存issue番号、参照すべきファイルパス、外部プロジェクト(例: medical-inventory-vkumaiのAIDDハーネス)など
+
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景
+      description: |
+        なぜこのissueが必要なのかを説明してください。
+        - 誰が(ユーザー本人か、ブレインストーミングの結果か、既存コードの調査結果か)
+        - どんな経緯で挙がったアイデア・課題か
+        - 解決しないと何が困るのか、または実現すると何が嬉しいのか
+      placeholder: |
+        例: 購買体験・UX向上のブレインストーミングで出たアイデア。
+        現状カートに商品を入れたまま離脱したユーザーに対するフォローが無く、機会損失になっている可能性がある。
+    validations:
+      required: true
+
+  - type: textarea
+    id: todo
+    attributes:
+      label: やること
+      description: |
+        具体的な作業項目をチェックリストまたは番号付きリストで記載してください。
+        実装の優先順位や順序が重要な場合は、その順序も明記してください(例: 「まず実装 → 次にテスト → 最後にドキュメント化」のように)。
+      placeholder: |
+        - [ ] 対応するServer Action / Route Handlerを実装する
+        - [ ] UIコンポーネントを追加する
+        - [ ] テストを追加する(vitest)
+        - [ ] docs/agents/known-failure-patterns.md に該当する落とし穴があれば追記する
+    validations:
+      required: true
+
+  - type: textarea
+    id: related
+    attributes:
+      label: 関連
+      description: |
+        関連する既存issue番号(#12 のように)、参照すべきファイルパス(app/**、supabase/migrations/** など)、
+        外部プロジェクトへの参照(例: ~/medical-inventory-vkumai のAIDDハーネス)などがあれば記載してください。
+        無ければ「特になし」と記載してください。
+      placeholder: |
+        例:
+        - 関連issue: #13, #14
+        - 参照ファイル: app/cart/actions.ts, docs/agents/known-failure-patterns.md
+    validations:
+      required: false
+
+  - type: dropdown
+    id: risk
+    attributes:
+      label: リスク区分(該当すれば選択)
+      description: |
+        DB(migrations/RLS/GRANT)・決済・認証・middlewareに関わる変更は、riff-gearのAIDDハーネス(aidd-phase1-router.js)でも
+        機械的に「高リスク」として扱われる領域です。該当する場合は選択してください。判断に迷う場合は「不明・未評価」を選んでください。
+      options:
+        - 高リスク(DBマイグレーション・RLS・GRANT・決済・認証・middlewareに関わる)
+        - 中リスク(既存機能の変更を伴うが上記領域には触れない)
+        - 低リスク(新規UI・表示のみの追加など)
+        - 不明・未評価
+    validations:
+      required: false
