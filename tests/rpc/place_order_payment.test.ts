@@ -3,7 +3,8 @@ import { createTestUser, deleteTestUser, type TestUser } from '../helpers/test-u
 import { createAdminClient } from '@/lib/supabase/admin'
 
 // place_order() の支払い方法(payment_method)引数と、それに応じたpayment_statusの初期値を検証する。
-// card/bank_transferは即時決済完了想定でpaid、cod(代金引換)は受け取り時払いのためpendingになる。
+// card/qr_codeは即時決済完了想定でpaid、bank_transfer/cod/convenience_storeは
+// 入金・支払い確認が後日必要なためpendingになる。
 describe('place_order の支払い方法とpayment_status', () => {
   let user: TestUser
   let productId: string
@@ -56,8 +57,10 @@ describe('place_order の支払い方法とpayment_status', () => {
 
   it.each([
     ['card', 'paid'],
-    ['bank_transfer', 'paid'],
+    ['qr_code', 'paid'],
+    ['bank_transfer', 'pending'],
     ['cod', 'pending'],
+    ['convenience_store', 'pending'],
   ])('payment_method=%s のときpayment_status=%sになる', async (method, expectedStatus) => {
     await addItemToCart()
     const { data: orderId, error } = await user.client.rpc('place_order', { p_payment_method: method })

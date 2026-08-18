@@ -17,6 +17,8 @@ export const PAYMENT_METHOD_LABEL: Record<string, string> = {
   card: 'クレジットカード',
   bank_transfer: '銀行振込',
   cod: '代金引換',
+  convenience_store: 'コンビニ支払い',
+  qr_code: 'QRコード決済',
 }
 export const PAYMENT_STATUS_LABEL: Record<string, string> = {
   pending: '支払い待ち',

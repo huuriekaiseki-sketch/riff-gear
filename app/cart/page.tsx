@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { removeFromCart, updateCartItemQuantity } from './actions'
+import CheckoutForm from './CheckoutForm'
 
 type CartItemRow = {
   id: string
@@ -129,32 +130,7 @@ export default async function CartPage({
             在庫を超えている商品があります。数量を調整してから注文してください
           </p>
         )}
-        <form action="/cart/checkout" method="post" className="mt-4">
-          <fieldset>
-            <legend className="text-sm font-medium text-foreground">支払い方法</legend>
-            <div className="mt-2 flex flex-col gap-2 text-sm text-gray-600 dark:text-gray-300">
-              <label className="flex items-center gap-2">
-                <input type="radio" name="payment_method" value="card" defaultChecked />
-                クレジットカード
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="radio" name="payment_method" value="bank_transfer" />
-                銀行振込
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="radio" name="payment_method" value="cod" />
-                代金引換
-              </label>
-            </div>
-          </fieldset>
-          <button
-            type="submit"
-            disabled={hasOverStockItem}
-            className="mt-4 w-full rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            注文する
-          </button>
-        </form>
+        <CheckoutForm disabled={hasOverStockItem} />
       </div>
     </main>
   )
