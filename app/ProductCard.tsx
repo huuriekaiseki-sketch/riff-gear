@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useOptimistic, useState } from 'react'
 import { addToCart } from './cart/actions'
+import FavoriteButton from './favorites/FavoriteButton'
 import { CATEGORY_STYLE, DEFAULT_STYLE } from '@/lib/categories'
 import ReturnWarrantyBadge from './components/ReturnWarrantyBadge'
 
@@ -27,9 +28,11 @@ type Status = 'idle' | 'pending' | 'done'
 export default function ProductCard({
   product,
   initialRemaining,
+  isFavorited,
 }: {
   product: Product
   initialRemaining: number
+  isFavorited?: boolean
 }) {
   const [remaining, decrementOptimistic] = useOptimistic(
     initialRemaining,
@@ -49,8 +52,8 @@ export default function ProductCard({
   return (
     <li className="group flex flex-col justify-between rounded-2xl border border-gray-200/60 bg-surface p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-4px_rgba(0,0,0,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_2px_4px_rgba(0,0,0,0.06),0_16px_40px_-8px_rgba(0,0,0,0.16)] dark:border-gray-800/60">
       <div>
-        <Link href={`/products/${product.id}`} className="block">
-          <div className="relative mb-4 h-28 overflow-hidden rounded-xl shadow-inner">
+        <div className="relative mb-4 h-28 overflow-hidden rounded-xl shadow-inner">
+          <Link href={`/products/${product.id}`} className="block h-full w-full">
             <Image
               src={style.photoUrl}
               alt={product.categoryLabel}
@@ -59,8 +62,13 @@ export default function ProductCard({
               className="object-cover transition-transform duration-300 group-hover:scale-105"
             />
             <div className={`absolute inset-0 bg-gradient-to-t ${style.gradient} opacity-25`} />
-          </div>
-        </Link>
+          </Link>
+          {isFavorited !== undefined && (
+            <div className="absolute right-2 top-2">
+              <FavoriteButton productId={product.id} initialIsFavorited={isFavorited} />
+            </div>
+          )}
+        </div>
         <span
           className={`inline-block rounded-full bg-gradient-to-r px-3 py-1 text-xs font-semibold text-white shadow-sm ${style.gradient}`}
         >

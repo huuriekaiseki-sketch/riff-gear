@@ -39,6 +39,7 @@ export default async function ProductListPage({
   // 「在庫 − カート内数量」を実質の残数として扱う。
   const { data: userData } = await supabase.auth.getUser()
   const cartQuantityByProductId = new Map<string, number>()
+  const favoritedProductIds = new Set<string>()
   if (userData.user) {
     const { data: cart } = await supabase
       .from('carts')
@@ -53,6 +54,14 @@ export default async function ProductListPage({
       for (const item of cartItems ?? []) {
         cartQuantityByProductId.set(item.product_id, item.quantity)
       }
+    }
+
+    const { data: favorites } = await supabase
+      .from('favorites')
+      .select('product_id')
+      .eq('user_id', userData.user.id)
+    for (const fav of favorites ?? []) {
+      favoritedProductIds.add(fav.product_id)
     }
   }
 
@@ -134,6 +143,7 @@ export default async function ProductListPage({
                 price_cents: p.price_cents,
               }}
               initialRemaining={remaining}
+              isFavorited={userData.user ? favoritedProductIds.has(p.id) : undefined}
             />
           )
         })}
