@@ -11,6 +11,17 @@ export type OrderWebhookPayload = {
   items: { productName: string; quantity: number; priceCentsAtOrder: number }[]
 }
 
+export type LowStockItem = { productName: string; stock: number }
+
+const DEFAULT_LOW_STOCK_THRESHOLD = 5
+
+// 閾値は環境変数LOW_STOCK_THRESHOLDで調整可能(未設定・不正値時はデフォルト5)。
+export function getLowStockThreshold(): number {
+  const raw = process.env.LOW_STOCK_THRESHOLD
+  const parsed = raw ? Number(raw) : NaN
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_LOW_STOCK_THRESHOLD
+}
+
 function formatYen(cents: number): string {
   return `¥${cents.toLocaleString('ja-JP')}`
 }
@@ -50,5 +61,31 @@ export async function notifyAdminOfOrder(payload: OrderWebhookPayload): Promise<
     }
   } catch (err) {
     console.error('注文Webhook通知に失敗しました', err)
+  }
+}
+
+function buildLowStockMessage(items: LowStockItem[]): string {
+  const itemLines = items.map((item) => `  - ${item.productName}: 残り${item.stock}個`).join('\n')
+  return [':warning: 在庫が少なくなっている商品があります', itemLines].join('\n')
+}
+
+// 在庫僅少を管理者のSlackへ通知する。notifyAdminOfOrderと同様にベストエフォート。
+export async function notifyAdminOfLowStock(items: LowStockItem[]): Promise<void> {
+  if (items.length === 0) return
+
+  const webhookUrl = process.env.ADMIN_WEBHOOK_URL
+  if (!webhookUrl) return
+
+  try {
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: buildLowStockMessage(items) }),
+    })
+    if (!response.ok) {
+      console.error(`在庫僅少Webhook通知に失敗しました: status=${response.status}`)
+    }
+  } catch (err) {
+    console.error('在庫僅少Webhook通知に失敗しました', err)
   }
 }
