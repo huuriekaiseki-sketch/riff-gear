@@ -6,6 +6,8 @@ import { CATEGORY_LABEL, CATEGORY_STYLE, DEFAULT_STYLE } from '@/lib/categories'
 import { addToCart } from '@/app/cart/actions'
 import FavoriteButton from '@/app/favorites/FavoriteButton'
 import ReturnWarrantyBadge from '@/app/components/ReturnWarrantyBadge'
+import CompareCheckbox from '@/app/components/CompareCheckbox'
+import { SPEC_LABEL, formatSpecValue } from '@/lib/spec-labels'
 import RecordView from './RecordView'
 import RelatedProducts from './RelatedProducts'
 import ReviewForm from '@/app/reviews/ReviewForm'
@@ -31,10 +33,13 @@ export default async function ProductDetailPage({
   // 不正なUUID等でクエリ自体がエラーになった場合も「商品が見つからない」扱いにする
   const { data: product, error } = await supabase
     .from('products')
-    .select('id, name, category, price_cents, stock')
+    .select('id, name, category, price_cents, stock, specs')
     .eq('id', id)
     .maybeSingle()
   if (error || !product) notFound()
+
+  const specs = (product.specs ?? {}) as Record<string, unknown>
+  const specEntries = Object.entries(specs)
 
   const { data: userData } = await supabase.auth.getUser()
   let quantityInCart = 0
@@ -179,6 +184,19 @@ export default async function ProductDetailPage({
           )}
           <div className="mt-6">
             <ReturnWarrantyBadge />
+          </div>
+          {specEntries.length > 0 && (
+            <dl className="mt-6 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+              {specEntries.map(([key, value]) => (
+                <div key={key} className="contents">
+                  <dt className="text-gray-500 dark:text-gray-400">{SPEC_LABEL[key] ?? key}</dt>
+                  <dd className="text-foreground">{formatSpecValue(key, value)}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          <div className="mt-4">
+            <CompareCheckbox productId={product.id} category={product.category} />
           </div>
         </div>
       </div>
