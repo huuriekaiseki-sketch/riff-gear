@@ -76,6 +76,9 @@ export default async function ProductListPage({
         <p className="mt-3 text-base text-gray-500 dark:text-gray-400">
           ギター・キーボードなど、バンド機材のセレクトショップ
         </p>
+        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+          {products?.length ?? 0}件表示中
+        </p>
       </div>
       {errorMessage && (
         <p role="alert" className="mb-6 rounded-lg bg-danger/10 px-4 py-3 text-sm text-danger">
