@@ -7,6 +7,7 @@ import { addToCart } from './cart/actions'
 import FavoriteButton from './favorites/FavoriteButton'
 import { CATEGORY_STYLE, DEFAULT_STYLE } from '@/lib/categories'
 import ReturnWarrantyBadge from './components/ReturnWarrantyBadge'
+import CompareCheckbox from './components/CompareCheckbox'
 
 type Product = {
   id: string
@@ -92,6 +93,9 @@ export default function ProductCard({
           ))}
         <div className="mt-3">
           <ReturnWarrantyBadge />
+        </div>
+        <div className="mt-2">
+          <CompareCheckbox productId={product.id} category={product.category} />
         </div>
       </div>
       {remaining <= 0 ? (
