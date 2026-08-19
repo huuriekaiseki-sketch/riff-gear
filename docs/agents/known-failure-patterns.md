@@ -17,3 +17,11 @@ Sweepエージェントが機械的にチェックする、riff-gearでこれま
 
 - `target="_blank"`のリンクに`rel="noopener"`が無い
 - Server Actionの`redirect()`後にエラーメッセージがクエリパラメータ経由で表示されず、ユーザーに失敗が伝わらない
+
+## 並行開発・運用層
+
+複数のブランチ/セッションが同時にmainへ向けて開発している状況特有の失敗。コードの静的パターンではなく、Sweeper/Finder段階での事前チェックや運用ルールで防ぐ性質のもの。
+
+- **マイグレーション番号の衝突**: 複数PRが同時に「mainの最新連番+1」を採番すると、片方が後からマージされた際に番号が重複し、`supabase db reset`が`duplicate key value violates unique constraint "schema_migrations_pkey"`でCI失敗する(実際に#39・#40・#44で連鎖的に発生、#46で機械検知をCIに追加して再発防止済み)。新しいマイグレーションを追加する前に、必ず`git fetch origin main`して最新の連番を確認する。CIの重複検知ステップ([.github/workflows/ci.yml](../../.github/workflows/ci.yml))が落ちたら、まずこれを疑う
+- **並行セッションでの同一issueへの重複着手**: Finder段階で`gh issue list --search`はチェックしていても、「今まさに他セッションが着手中で未クローズのOPEN PR」の存在確認を怠ると、同じissueに対して独立に実装してしまい手戻りになる(実際に#22で発生、issue自体は既にクローズされ別実装がmainにマージ済みだった)。Finder段階で`gh pr list --search <キーワード>`もあわせて確認し、関連するOPEN PRが無いか見る
+- **Supabaseローカル環境のスキーマキャッシュ不整合**: `supabase db reset`直後にPostgRESTのスキーマキャッシュが更新されず、新しいテーブル・カラムに対して`Could not find the table/column ... in the schema cache`が返ることがある。`docker restart supabase_rest_<project>`で解消するか、`supabase db reset`をもう一度実行する
