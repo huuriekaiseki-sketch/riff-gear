@@ -6,7 +6,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 // ユーザーのカートを取得し、なければ作成してカートIDを返す。
 // carts.user_id は unique 制約があるため、1ユーザー1カートを前提にできる。
-async function getOrCreateCartId(supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>) {
+export async function getOrCreateCartId(supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>) {
   const { data: userData } = await supabase.auth.getUser()
   if (!userData.user) throw new Error('ログインが必要です')
 

@@ -1,5 +1,5 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { cancelOrder } from '../actions'
+import { cancelOrder, reorderOrder } from '../actions'
 import {
   STATUS_LABEL,
   STATUS_COLOR,
@@ -86,17 +86,28 @@ export default async function OrderDetailPage({
           )}
         </p>
       </div>
-      {order.status === 'received' && (
-        <form action={cancelOrder} className="mt-6 text-right">
+      <div className="mt-6 flex items-center justify-end gap-3">
+        <form action={reorderOrder}>
           <input type="hidden" name="orderId" value={order.id} />
           <button
             type="submit"
-            className="rounded-lg border border-danger px-4 py-2 text-sm font-medium text-danger transition-colors hover:bg-danger/10"
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:border-primary hover:text-primary dark:border-gray-700 dark:text-gray-300"
           >
-            注文をキャンセルする
+            もう一度注文する
           </button>
         </form>
-      )}
+        {order.status === 'received' && (
+          <form action={cancelOrder}>
+            <input type="hidden" name="orderId" value={order.id} />
+            <button
+              type="submit"
+              className="rounded-lg border border-danger px-4 py-2 text-sm font-medium text-danger transition-colors hover:bg-danger/10"
+            >
+              注文をキャンセルする
+            </button>
+          </form>
+        )}
+      </div>
     </main>
   )
 }

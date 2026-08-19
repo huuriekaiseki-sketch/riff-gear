@@ -18,9 +18,9 @@ type CartItemRow = {
 export default async function CartPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>
+  searchParams: Promise<{ error?: string; message?: string }>
 }) {
-  const { error: errorMessage } = await searchParams
+  const { error: errorMessage, message } = await searchParams
   const supabase = await createServerSupabaseClient()
   const { data: userData } = await supabase.auth.getUser()
   if (!userData.user) {
@@ -54,6 +54,11 @@ export default async function CartPage({
     return (
       <main className="mx-auto max-w-2xl text-center">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">カート</h1>
+        {message && (
+          <p className="mt-4 rounded-lg bg-secondary/10 px-4 py-3 text-sm text-secondary">
+            {message}
+          </p>
+        )}
         <div className="mt-10 rounded-2xl border border-gray-200 bg-surface px-6 py-16 shadow-sm dark:border-gray-800">
           <p className="text-gray-500 dark:text-gray-400">カートに商品がありません。</p>
           <Link
@@ -80,6 +85,9 @@ export default async function CartPage({
         <p role="alert" className="mt-4 rounded-lg bg-danger/10 px-4 py-3 text-sm text-danger">
           {errorMessage}
         </p>
+      )}
+      {message && (
+        <p className="mt-4 rounded-lg bg-secondary/10 px-4 py-3 text-sm text-secondary">{message}</p>
       )}
       <ul className="mt-6 divide-y divide-gray-200 rounded-2xl border border-gray-200 bg-surface shadow-sm dark:divide-gray-800 dark:border-gray-800">
         {items.map((item) => {

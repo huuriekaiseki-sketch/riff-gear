@@ -6,6 +6,7 @@ import {
   PAYMENT_METHOD_LABEL,
   PAYMENT_STATUS_LABEL,
 } from '@/lib/order-labels'
+import { reorderOrder } from './actions'
 
 // 注文履歴ページ。RLSにより`orders`は本人の行しか返らないため、
 // クエリ自体に user_id フィルタを書かなくてもユーザー間の分離が保たれる。
@@ -30,10 +31,10 @@ export default async function OrderHistoryPage() {
       <h1 className="text-2xl font-semibold tracking-tight text-foreground">注文履歴</h1>
       <ul className="mt-6 divide-y divide-gray-200 rounded-2xl border border-gray-200 bg-surface shadow-sm dark:divide-gray-800 dark:border-gray-800">
         {orders?.map((order) => (
-          <li key={order.id}>
+          <li key={order.id} className="flex items-center justify-between gap-4 px-6 py-4">
             <Link
               href={`/orders/${order.id}`}
-              className="flex items-center justify-between gap-4 px-6 py-4 transition-colors hover:bg-gray-50 dark:hover:bg-gray-900"
+              className="flex flex-1 items-center justify-between gap-4 transition-colors hover:opacity-80"
             >
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -60,6 +61,15 @@ export default async function OrderHistoryPage() {
                 {STATUS_LABEL[order.status] ?? order.status}
               </span>
             </Link>
+            <form action={reorderOrder}>
+              <input type="hidden" name="orderId" value={order.id} />
+              <button
+                type="submit"
+                className="rounded-full border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:border-primary hover:text-primary dark:border-gray-700 dark:text-gray-300"
+              >
+                もう一度注文する
+              </button>
+            </form>
           </li>
         ))}
       </ul>
