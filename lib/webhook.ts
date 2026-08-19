@@ -13,6 +13,13 @@ export type OrderWebhookPayload = {
 
 export type LowStockItem = { productName: string; stock: number }
 
+export type AbandonedCart = {
+  cartId: string
+  userId: string
+  displayName: string | null
+  items: { productName: string; quantity: number }[]
+}
+
 const DEFAULT_LOW_STOCK_THRESHOLD = 5
 
 // 閾値は環境変数LOW_STOCK_THRESHOLDで調整可能(未設定・不正値時はデフォルト5)。
@@ -61,6 +68,37 @@ export async function notifyAdminOfOrder(payload: OrderWebhookPayload): Promise<
     }
   } catch (err) {
     console.error('注文Webhook通知に失敗しました', err)
+  }
+}
+
+function buildAbandonedCartMessage(carts: AbandonedCart[]): string {
+  const cartBlocks = carts.map((cart) => {
+    const itemLines = cart.items
+      .map((item) => `    - ${item.productName} x${item.quantity}`)
+      .join('\n')
+    return `  ユーザー: ${cart.displayName ?? '未設定'} (${cart.userId})\n${itemLines}`
+  })
+  return [':shopping_cart: 放棄されたカートがあります', ...cartBlocks].join('\n')
+}
+
+// 放棄カートを管理者のSlackへ通知する。notifyAdminOfOrderと同様にベストエフォート。
+export async function notifyAdminOfAbandonedCarts(carts: AbandonedCart[]): Promise<void> {
+  if (carts.length === 0) return
+
+  const webhookUrl = process.env.ADMIN_WEBHOOK_URL
+  if (!webhookUrl) return
+
+  try {
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: buildAbandonedCartMessage(carts) }),
+    })
+    if (!response.ok) {
+      console.error(`放棄カートWebhook通知に失敗しました: status=${response.status}`)
+    }
+  } catch (err) {
+    console.error('放棄カートWebhook通知に失敗しました', err)
   }
 }
 
