@@ -34,6 +34,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # WHY: 並行して作業する複数PRが同じマイグレーション連番を選んでしまい、
+      # supabase db resetがschema_migrationsの主キー重複で失敗する事故が2度起きた(issue #43)。
+      # 重いSupabase起動の前に、連番の重複を機械的に検知して早期に落とす。
+      - name: Check for duplicate migration version numbers
+        run: |
+          cd supabase/migrations
+          dupes=$(ls *.sql | sed -E 's/^([0-9]+)_.*/\1/' | sort | uniq -d)
+          if [ -n "$dupes" ]; then
+            echo "::error::重複したマイグレーション番号があります: $dupes"
+            exit 1
+          fi
+
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
