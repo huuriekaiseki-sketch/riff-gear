@@ -9,16 +9,25 @@ import ReturnWarrantyBadge from '@/app/components/ReturnWarrantyBadge'
 import CompareCheckbox from '@/app/components/CompareCheckbox'
 import { SPEC_LABEL, formatSpecValue } from '@/lib/spec-labels'
 import RecordView from './RecordView'
+import RelatedProducts from './RelatedProducts'
+import ReviewForm from '@/app/reviews/ReviewForm'
+import ReviewList from '@/app/reviews/ReviewList'
+import { summarizeRatings } from '@/lib/reviews'
+
+const RELATED_LIMIT = 4
 
 // 商品詳細ページ。一覧と同じく「在庫 − 自分のカート内数量」を実質の残数として
 // 扱い、残数0なら売り切れ表示に差し替える。閲覧はRecordView(クライアント)経由で
 // localStorageの「最近見た商品」履歴に記録される。
 export default async function ProductDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ reviewError?: string }>
 }) {
   const { id } = await params
+  const { reviewError } = await searchParams
   const supabase = await createServerSupabaseClient()
 
   // 不正なUUID等でクエリ自体がエラーになった場合も「商品が見つからない」扱いにする
@@ -35,7 +44,27 @@ export default async function ProductDetailPage({
   const { data: userData } = await supabase.auth.getUser()
   let quantityInCart = 0
   let isFavorited = false
+  let hasPurchased = false
+  let myReview: { rating: number; comment: string | null } | null = null
   if (userData.user) {
+    const { data: purchase } = await supabase
+      .from('order_items')
+      .select('id, orders!inner(user_id, status)')
+      .eq('product_id', product.id)
+      .eq('orders.user_id', userData.user.id)
+      .neq('orders.status', 'cancelled')
+      .limit(1)
+      .maybeSingle()
+    hasPurchased = !!purchase
+
+    const { data: existingReview } = await supabase
+      .from('reviews')
+      .select('rating, comment')
+      .eq('user_id', userData.user.id)
+      .eq('product_id', product.id)
+      .maybeSingle()
+    myReview = existingReview ?? null
+
     const { data: favorite } = await supabase
       .from('favorites')
       .select('id')
@@ -63,6 +92,23 @@ export default async function ProductDetailPage({
 
   const categoryLabel = CATEGORY_LABEL[product.category] ?? product.category
   const style = CATEGORY_STYLE[product.category] ?? DEFAULT_STYLE
+
+  // 同カテゴリ・在庫あり・自分自身を除いた商品を関連商品として表示する
+  const { data: relatedProducts } = await supabase
+    .from('products')
+    .select('id, name, category, price_cents')
+    .eq('category', product.category)
+    .neq('id', product.id)
+    .gt('stock', 0)
+    .order('name')
+    .limit(RELATED_LIMIT)
+
+  const { data: reviews } = await supabase
+    .from('reviews')
+    .select('id, rating, comment, created_at, user_id')
+    .eq('product_id', product.id)
+    .order('created_at', { ascending: false })
+  const { average, count } = summarizeRatings((reviews ?? []).map((r) => r.rating))
 
   return (
     <main>
@@ -107,6 +153,12 @@ export default async function ProductDetailPage({
           <p className="mt-3 text-3xl font-bold tracking-tight text-foreground">
             ¥{product.price_cents.toLocaleString()}
           </p>
+          {count > 0 && (
+            <p className="mt-1 flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
+              <span className="text-warning">★</span>
+              {average}({count}件)
+            </p>
+          )}
           {remaining > 0 &&
             (remaining <= 3 ? (
               <span className="mt-3 inline-flex items-center gap-1 rounded-full bg-warning/15 px-2.5 py-0.5 text-xs font-semibold text-warning">
@@ -148,6 +200,23 @@ export default async function ProductDetailPage({
           </div>
         </div>
       </div>
+      <RelatedProducts products={relatedProducts ?? []} />
+      <section className="mt-12">
+        <h2 className="text-xl font-semibold tracking-tight text-foreground">レビュー</h2>
+        {reviewError && (
+          <p role="alert" className="mt-2 rounded-lg bg-danger/10 px-4 py-3 text-sm text-danger">
+            {reviewError}
+          </p>
+        )}
+        <ReviewList productId={product.id} reviews={reviews ?? []} currentUserId={userData.user?.id} />
+        {hasPurchased && (
+          <ReviewForm
+            productId={product.id}
+            initialRating={myReview?.rating}
+            initialComment={myReview?.comment ?? undefined}
+          />
+        )}
+      </section>
     </main>
   )
 }
