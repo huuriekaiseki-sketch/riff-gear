@@ -34,6 +34,18 @@ export default function CheckoutForm({ disabled }: { disabled: boolean }) {
           ))}
         </div>
       </fieldset>
+      <div className={submitting ? 'pointer-events-none mt-4 opacity-50' : 'mt-4'}>
+        <label htmlFor="coupon_code" className="text-sm font-medium text-foreground">
+          クーポンコード（任意）
+        </label>
+        <input
+          type="text"
+          id="coupon_code"
+          name="coupon_code"
+          placeholder="クーポンコードをお持ちの方はご入力ください"
+          className="mt-2 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2 text-sm text-foreground placeholder:text-gray-400 focus:border-primary focus:outline-none dark:border-gray-700"
+        />
+      </div>
       <button
         type="submit"
         disabled={disabled || submitting}
