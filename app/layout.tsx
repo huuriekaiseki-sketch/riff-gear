@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import SiteHeader from "./components/SiteHeader";
-import SiteFooter from "./components/SiteFooter";
 import CompareTray from "./components/CompareTray";
 
 const inter = Inter({
@@ -33,7 +32,6 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col">
         <SiteHeader />
         <div className="mx-auto w-full max-w-5xl flex-1 px-6 py-10 pb-20">{children}</div>
-        <SiteFooter />
         <CompareTray />
       </body>
     </html>

@@ -8,12 +8,29 @@ export default async function SiteHeader() {
   const isLoggedIn = !!userData.user
   const isAdmin = userData.user?.app_metadata?.role === 'admin'
 
+  let displayName: string | null = null
+  if (isLoggedIn) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('display_name')
+      .eq('id', userData.user!.id)
+      .maybeSingle()
+    displayName = profile?.display_name || null
+  }
+
   return (
     <header className="sticky top-0 z-10 border-b border-gray-200/80 bg-white/80 backdrop-blur-md dark:border-gray-800/80 dark:bg-black/60">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-        <Link href="/" className="text-lg font-semibold tracking-tight text-foreground">
-          Riff Gear
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/" className="text-lg font-semibold tracking-tight text-foreground">
+            Riff Gear
+          </Link>
+          {displayName && (
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              ようこそ、{displayName}さん
+            </span>
+          )}
+        </div>
         <nav className="flex items-center gap-6 text-sm font-medium text-gray-600 dark:text-gray-300">
           <Link href="/" className="transition-colors hover:text-primary">
             商品一覧
