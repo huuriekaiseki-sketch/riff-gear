@@ -39,8 +39,14 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // クーポンコードは未入力なら null として渡す（place_order側で未指定=適用なしと扱う）。
+  // 前後の空白のみのトリムであり、値そのものの妥当性チェックはDB側（RLS+関数内検証）に委ねる。
+  const rawCouponCode = formData.get('coupon_code')
+  const couponCode = typeof rawCouponCode === 'string' && rawCouponCode.trim() !== '' ? rawCouponCode.trim() : null
+
   const { data: orderId, error } = await supabase.rpc('place_order', {
     p_payment_method: paymentMethod,
+    p_coupon_code: couponCode,
   })
   if (error) {
     const url = new URL('/cart', request.url)
