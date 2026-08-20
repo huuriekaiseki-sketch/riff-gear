@@ -1,5 +1,12 @@
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import CartNavLink from './CartNavLink'
+
+type CartItemPreviewRow = {
+  id: string
+  quantity: number
+  products: { name: string } | { name: string }[]
+}
 
 // 全ページ共通のヘッダー。ログイン状態・管理者権限に応じてナビ項目を出し分ける。
 export default async function SiteHeader() {
@@ -9,6 +16,7 @@ export default async function SiteHeader() {
   const isAdmin = userData.user?.app_metadata?.role === 'admin'
 
   let displayName: string | null = null
+  let cartItems: { id: string; name: string; quantity: number }[] = []
   if (isLoggedIn) {
     const { data: profile } = await supabase
       .from('profiles')
@@ -16,7 +24,27 @@ export default async function SiteHeader() {
       .eq('id', userData.user!.id)
       .maybeSingle()
     displayName = profile?.display_name || null
+
+    const { data: cart } = await supabase
+      .from('carts')
+      .select('id')
+      .eq('user_id', userData.user!.id)
+      .maybeSingle()
+
+    if (cart) {
+      const { data: items } = (await supabase
+        .from('cart_items')
+        .select('id, quantity, products(name)')
+        .eq('cart_id', cart.id)) as { data: CartItemPreviewRow[] | null }
+
+      cartItems = (items ?? []).map((item) => ({
+        id: item.id,
+        quantity: item.quantity,
+        name: Array.isArray(item.products) ? item.products[0]?.name ?? '' : item.products.name,
+      }))
+    }
   }
+  const cartTotalCount = cartItems.reduce((sum, item) => sum + item.quantity, 0)
 
   return (
     <header className="sticky top-0 z-10 border-b border-gray-200/80 bg-white/80 backdrop-blur-md dark:border-gray-800/80 dark:bg-black/60">
@@ -40,9 +68,7 @@ export default async function SiteHeader() {
               <Link href="/favorites" className="transition-colors hover:text-primary">
                 お気に入り
               </Link>
-              <Link href="/cart" className="transition-colors hover:text-primary">
-                カート
-              </Link>
+              <CartNavLink items={cartItems} totalCount={cartTotalCount} />
               <Link href="/orders" className="transition-colors hover:text-primary">
                 注文履歴
               </Link>
