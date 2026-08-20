@@ -14,6 +14,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  hooks-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # WHY: .claude/settings.jsonから呼ばれるhookスクリプト(scripts/check-*.sh等)には
+      # 個別の回帰テスト(scripts/*.test.sh)を用意している。テストされないまま放置すると
+      # 劣化に気づけない(issue #57・#58・#59・#60はレビューで見つかったが、CIには
+      # まだ組み込まれていなかった)ため、ここで機械的に全件実行する。
+      - name: Run hook script regression tests
+        run: |
+          for t in scripts/*.test.sh; do
+            echo "::group::$t"
+            bash "$t"
+            echo "::endgroup::"
+          done
+
   typecheck:
     uses: ./.github/workflows/node-check.yml
     with:

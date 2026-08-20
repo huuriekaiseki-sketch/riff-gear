@@ -6,6 +6,12 @@ set -euo pipefail
 # 警告する。block（セッション開始そのものの停止）はできない前提のためwarningのみ。
 # medical-inventory-vkumaiのscripts/check-branch-pr-status.shを移植(issue #15)。
 
+# WHY(issue #636): 警告専用hookのためjq不在時はfail-open(exit 0で静かに諦める)。
+# denyゲート(check-direct-ddl-execution.sh)とは異なり、ブロックすべき操作が無いため。
+# dirname呼び出し(次の行)より前に置く: dirname自体が使えない極小環境でも
+# jqガードで先に抜けられるようにする。
+command -v jq >/dev/null 2>&1 || exit 0
+
 cd "$(dirname "$0")/.."
 
 BRANCH="$(git branch --show-current 2>/dev/null || true)"
