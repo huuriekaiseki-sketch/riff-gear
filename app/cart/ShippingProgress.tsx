@@ -1,4 +1,8 @@
-import { FREE_SHIPPING_THRESHOLD_CENTS, getShippingProgress } from '@/lib/shipping'
+import {
+  FREE_SHIPPING_THRESHOLD_CENTS,
+  NOMINAL_SHIPPING_FEE_CENTS,
+  getShippingProgress,
+} from '@/lib/shipping'
 
 // 送料無料ラインまでの進捗バー。表示専用で合計金額の計算には関与しない。
 // 「あと¥Xで送料無料」の残額訴求は、カート単価を引き上げるECの定番UX。
@@ -8,7 +12,18 @@ export default function ShippingProgress({ totalCents }: { totalCents: number })
   return (
     <div className="mt-4">
       {isFree ? (
-        <p className="text-sm font-medium text-success">🎉 送料無料でお届けします！</p>
+        <div>
+          <p className="text-sm font-medium text-success">🎉 送料無料でお届けします！</p>
+          <p className="mt-1 text-sm">
+            <span className="text-gray-400 line-through dark:text-gray-500">
+              ¥{(totalCents + NOMINAL_SHIPPING_FEE_CENTS).toLocaleString()}
+            </span>
+            <span className="ml-2 font-semibold text-success">¥{totalCents.toLocaleString()}</span>
+            <span className="ml-2 text-success">
+              （送料¥{NOMINAL_SHIPPING_FEE_CENTS.toLocaleString()}お得！）
+            </span>
+          </p>
+        </div>
       ) : (
         <p className="text-sm text-gray-600 dark:text-gray-300">
           あと
