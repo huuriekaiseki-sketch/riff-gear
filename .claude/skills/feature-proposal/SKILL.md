@@ -47,9 +47,13 @@ Sweeper・Finderの結果を踏まえ、実装方針をAskUserQuestionで確認�
 - 実装アプローチが複数あるなら選択肢として提示する（推奨に「(推奨)」を付ける）
 - 閾値・文言・置き場所など、開発者の好みが出る設定値を確認する
 - Sweeper/Finderで「既に実装済み」と判明した場合は、実装せず報告して終了する選択肢を必ず提示する
+- **影響する層をAskUserQuestion（multiSelect）で確認する**: 「この機能はどの層に影響しますか？」→ UI（`app/`ページ・コンポーネント）／データ（`lib/`・Server Actions・Route Handlers）／DB（`supabase/migrations/`）。この回答がRole 4の実装方式を決める
 
 ### Role 4: Implementer（実装・検証）
 
+**影響層が2つ以上ならPhase2ワークフローを使う**: Role 3で選ばれた層が2つ以上の場合、手動実装ではなく`aidd-phase2`ワークフロー（`Workflow`ツール、`scriptPath: ".claude/workflows/aidd-phase2.js"`）を呼び、`args: { taskDescription, layers: [選ばれた層] }`で並列実装（implementer-ui/data/db → integrator → 4観点レビュー）させる。返り値が`aidd-phase2-blocked`ならその内容をそのままCriticに引き継ぎ、人間に報告してから再検討する。影響層が1つだけなら以下の手動フローでよい（並列オーケストレーションのオーバーヘッドに見合わないため）。
+
+**手動実装フロー（影響層1つの場合、またはPhase2が使えない場合）:**
 1. 既存コードのパターン・命名・設計を踏襲して実装する
 2. `npm run build` と `npm test` を通す
 3. ブラウザプレビューで実際に動作確認する。riff-gearでの定石:
@@ -57,6 +61,8 @@ Sweeper・Finderの結果を踏まえ、実装方針をAskUserQuestionで確認�
    - ログインが要る場合はMailpit(`http://127.0.0.1:54524`)からマジックリンクを取得する
    - テストデータが要る場合はSupabase REST API(`curl -X PATCH .../rest/v1/products?...`)で一時的に調整する
    - 通知系など画面に出ないロジックは`console.log`の一時デバッグ出力で確認する
+
+**Phase2ワークフローを使った場合も**、Role 5のCriticチェックリストは省略しない（integratorのbuild/test確認を鵜呑みにせず、最終的な`git diff`確認は必ず人間相当の目で行う）。
 
 ### Role 5: Critic（検証・批判）
 
