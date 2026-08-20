@@ -1,0 +1,31 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "scripts/check-branch-pr-status.sh", "timeout": 15 }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|mcp__.*execute_sql",
+        "hooks": [
+          { "type": "command", "command": "scripts/check-direct-ddl-execution.sh", "timeout": 5 }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "scripts/ai-check-suggest.sh",
+            "timeout": 15,
+            "statusMessage": "ai:check実行有無を確認中..."
+          }
+        ]
+      }
+    ]
+  }
+}

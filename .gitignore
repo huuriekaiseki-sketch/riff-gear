@@ -43,3 +43,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# AIDD hooks state
+/.claude/.ai-check-suggest-state/
