@@ -149,7 +149,7 @@ export default async function CartPage({
             在庫を超えている商品があります。数量を調整してから注文してください
           </p>
         )}
-        <CheckoutForm disabled={hasOverStockItem} />
+        <CheckoutForm disabled={hasOverStockItem} totalCents={total} />
       </div>
     </main>
   )
