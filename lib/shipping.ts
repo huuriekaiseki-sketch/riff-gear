@@ -4,6 +4,9 @@
 
 export const FREE_SHIPPING_THRESHOLD_CENTS = 10000
 
+// 送料無料の「お得感」を伝えるための表示専用の仮送料。実際の注文金額には一切加算されない。
+export const NOMINAL_SHIPPING_FEE_CENTS = 1000
+
 export type ShippingProgress = {
   /** 送料無料ラインに到達したか */
   isFree: boolean
