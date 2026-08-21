@@ -51,7 +51,7 @@ export default async function SiteHeader() {
       <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
         <div className="flex items-center gap-2">
           <Link href="/" className="text-lg font-semibold tracking-tight text-foreground">
-            Riff Gear
+            🐛BROKEN🐛
           </Link>
           {displayName && (
             <span className="text-sm text-gray-500 dark:text-gray-400">
