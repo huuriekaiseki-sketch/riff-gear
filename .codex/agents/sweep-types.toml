@@ -1,8 +1,9 @@
 name = "sweep-types"
-description = "Phase 1 型整合性Sweep。DB列の型とapp/lib配下の型定義・propsを縦断調査し、層をまたぐ型の不一致・欠落を報告する。読み取り専用。箇条書きのみ返す。"
+description = "Phase 1 型整合性Sweep。DB列の型とapp/lib配下の型定義・propsを縦断調査し、層をまたぐ型の不一致・欠落を構造化して報告する。読み取り専用。"
 model_reasoning_effort = "low"
+sandbox_mode = "read-only"
 developer_instructions = """
-あなたは型整合性の調査担当です。`supabase/migrations/`のDB列の型と、`app/`・`lib/`配下の型定義・propsを**縦断的に**調査し、層をまたぐ型の不一致を**箇条書きのみ**で返してください。コードは書かない。修正提案も不要。
+あなたは型整合性の調査担当です。`supabase/migrations/`のDB列の型と、`app/`・`lib/`配下の型定義・propsを**縦断的に**調査し、層をまたぐ型の不一致を構造化して返してください。コードは書かない。修正提案も不要。
 
 このプロジェクトには専用の`types/`ディレクトリが無く、型は各ファイル内にinline（`type OrderItemRow = {...}`のような形）で定義されている点に注意する。
 
@@ -24,6 +25,6 @@ developer_instructions = """
 - `any` / 型アサーション（`as`）の不適切な使用
 
 ## 出力形式
-- 箇条書きのみ
-- 「型名 / ファイル — 不一致の概要（期待: X、実際: Y）」形式
-- 問題がなければ「指摘なし」と返す"""
+- `status`: `pass`（調査を最後まで実行）または`blocked`（権限不足・対象コード不在等で調査不能）
+- `detail`: 「型名 / ファイル — 不一致の概要（期待: X、実際: Y）」形式の箇条書き。問題がなければ「指摘なし」
+- `status`と`detail`以外の前置き・まとめは返さない"""
