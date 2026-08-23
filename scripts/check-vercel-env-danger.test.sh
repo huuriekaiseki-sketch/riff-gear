@@ -90,27 +90,42 @@ run_hook "/usr/local/bin/vercel env remove SUPABASE_SERVICE_ROLE_KEY" claude
 assert_eq "$EXIT_CODE" "0" "exit 0"
 assert_decision_and_reason "$OUT" "ask" "絶対パスClaude"
 
-echo "=== scenario 8: echo内のvercel env rm → 無出力 ==="
+echo "=== scenario 8: 環境変数代入付きvercel env rm → deny + reason ==="
+run_hook "VERCEL_TOKEN=x vercel env rm SUPABASE_SERVICE_ROLE_KEY"
+assert_eq "$EXIT_CODE" "0" "exit 0"
+assert_decision_and_reason "$OUT" "deny" "環境変数代入"
+
+echo "=== scenario 9: env経由vercel env remove → deny + reason ==="
+run_hook "env VERCEL_TOKEN=x vercel env remove SUPABASE_SERVICE_ROLE_KEY"
+assert_eq "$EXIT_CODE" "0" "exit 0"
+assert_decision_and_reason "$OUT" "deny" "env経由"
+
+echo "=== scenario 10: sudo vercel env rm → deny + reason ==="
+run_hook "sudo vercel env rm SUPABASE_SERVICE_ROLE_KEY"
+assert_eq "$EXIT_CODE" "0" "exit 0"
+assert_decision_and_reason "$OUT" "deny" "sudo経由"
+
+echo "=== scenario 11: echo内のvercel env rm → 無出力 ==="
 run_hook "echo /usr/local/bin/vercel env rm SUPABASE_SERVICE_ROLE_KEY"
 assert_eq "$EXIT_CODE" "0" "exit 0"
 assert_empty "$OUT" "表示文字列内の危険トークンは無出力"
 
-echo "=== scenario 9: 相対パスvercel env remove → deny + reason ==="
+echo "=== scenario 12: 相対パスvercel env remove → deny + reason ==="
 run_hook "./node_modules/.bin/vercel env remove SUPABASE_SERVICE_ROLE_KEY"
 assert_eq "$EXIT_CODE" "0" "exit 0"
 assert_decision_and_reason "$OUT" "deny" "相対パス"
 
-echo "=== scenario 10: 連結コマンド内の絶対パスvercel env rm → deny + reason ==="
+echo "=== scenario 13: 連結コマンド内の絶対パスvercel env rm → deny + reason ==="
 run_hook "echo before; /usr/local/bin/vercel env rm SUPABASE_SERVICE_ROLE_KEY"
 assert_eq "$EXIT_CODE" "0" "exit 0"
 assert_decision_and_reason "$OUT" "deny" "連結コマンド"
 
-echo "=== scenario 11: 通常コマンド → 無出力 ==="
+echo "=== scenario 14: 通常コマンド → 無出力 ==="
 run_hook "npm test"
 assert_eq "$EXIT_CODE" "0" "exit 0"
 assert_empty "$OUT" "安全なコマンドは無出力"
 
-echo "=== scenario 12: vercel env ls → 無出力 ==="
+echo "=== scenario 15: vercel env ls → 無出力 ==="
 run_hook "vercel env ls"
 assert_eq "$EXIT_CODE" "0" "exit 0"
 assert_empty "$OUT" "安全なvercelコマンドは無出力"
