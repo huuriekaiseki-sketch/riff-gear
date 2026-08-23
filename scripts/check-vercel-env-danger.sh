@@ -16,9 +16,9 @@ split_segments() {
   printf '%s\n' "$1" | sed -E 's/(\|\||&&|[;&|])/\n/g'
 }
 
-# 「vercel env rm」「vercel env remove」がセグメント内に単語として現れるか。
+# 「vercel env rm」「vercel env remove」がセグメント先頭の実行位置にあるか。
 # npx/pnpm dlx/yarn dlx経由、および実行ファイルの絶対・相対パス経由も対象にする。
-VERCEL_ENV_RM_PATTERN='(^|[[:space:](])((npx|pnpm[[:space:]]+dlx|yarn[[:space:]]+dlx)[[:space:]]+)?([[:alnum:]_./-]+/)?vercel[[:space:]]+env[[:space:]]+(rm|remove)([[:space:]]|$)'
+VERCEL_ENV_RM_PATTERN='^[[:space:]]*(\([[:space:]]*)?((npx|pnpm[[:space:]]+dlx|yarn[[:space:]]+dlx)[[:space:]]+)?([[:alnum:]_./-]+/)?vercel[[:space:]]+env[[:space:]]+(rm|remove)([[:space:]]|$)'
 
 INPUT="$(cat)"
 TOOL_NAME="$(printf '%s' "$INPUT" | jq -r '.tool_name // ""')"

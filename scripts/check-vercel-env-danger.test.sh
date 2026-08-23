@@ -85,22 +85,32 @@ run_hook "/usr/local/bin/vercel env rm SUPABASE_SERVICE_ROLE_KEY"
 assert_eq "$EXIT_CODE" "0" "exit 0"
 assert_decision_and_reason "$OUT" "deny" "絶対パス"
 
-echo "=== scenario 7: 相対パスvercel env remove → deny + reason ==="
+echo "=== scenario 7: 絶対パスvercel env remove → Claude ask + reason ==="
+run_hook "/usr/local/bin/vercel env remove SUPABASE_SERVICE_ROLE_KEY" claude
+assert_eq "$EXIT_CODE" "0" "exit 0"
+assert_decision_and_reason "$OUT" "ask" "絶対パスClaude"
+
+echo "=== scenario 8: echo内のvercel env rm → 無出力 ==="
+run_hook "echo /usr/local/bin/vercel env rm SUPABASE_SERVICE_ROLE_KEY"
+assert_eq "$EXIT_CODE" "0" "exit 0"
+assert_empty "$OUT" "表示文字列内の危険トークンは無出力"
+
+echo "=== scenario 9: 相対パスvercel env remove → deny + reason ==="
 run_hook "./node_modules/.bin/vercel env remove SUPABASE_SERVICE_ROLE_KEY"
 assert_eq "$EXIT_CODE" "0" "exit 0"
 assert_decision_and_reason "$OUT" "deny" "相対パス"
 
-echo "=== scenario 8: 連結コマンド内の絶対パスvercel env rm → deny + reason ==="
+echo "=== scenario 10: 連結コマンド内の絶対パスvercel env rm → deny + reason ==="
 run_hook "echo before; /usr/local/bin/vercel env rm SUPABASE_SERVICE_ROLE_KEY"
 assert_eq "$EXIT_CODE" "0" "exit 0"
 assert_decision_and_reason "$OUT" "deny" "連結コマンド"
 
-echo "=== scenario 9: 通常コマンド → 無出力 ==="
+echo "=== scenario 11: 通常コマンド → 無出力 ==="
 run_hook "npm test"
 assert_eq "$EXIT_CODE" "0" "exit 0"
 assert_empty "$OUT" "安全なコマンドは無出力"
 
-echo "=== scenario 10: vercel env ls → 無出力 ==="
+echo "=== scenario 12: vercel env ls → 無出力 ==="
 run_hook "vercel env ls"
 assert_eq "$EXIT_CODE" "0" "exit 0"
 assert_empty "$OUT" "安全なvercelコマンドは無出力"
