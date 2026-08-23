@@ -75,23 +75,38 @@ git worktree add ../riff-gear-claude-<task> -b claude/<task> origin/main
 
 push前に、GUIのChatGPT.appではなくTerminalからCodex CLIを起動し、次をすべて目視確認する。
 
-1. `codex --version`で検証したCLIバージョンを記録する。
-2. `/hooks`を開き、対象hookのSourceが検証対象リポジトリの`.codex/hooks.json`であること、Reviewが`0`、InstalledとActiveの対象件数が一致することを確認する。未信頼hookはコマンド内容を読んでから信頼する。
-3. 実サービスへ接続しない偽コマンドを`PATH`の先頭に置き、Codexへ危険操作を依頼する。
-4. `Command blocked by PreToolUse hook`とblock理由が画面に表示されることを確認する。エラーだけで無音終了した場合は失敗とする。
-5. 偽コマンドの実行マーカーが存在しないことを確認する。存在した場合は、shell testが通っていてもpushを停止する。
+1. 検証対象の変更がcommit済みで、source worktreeがcleanであることを確認する。未commit変更を含むsourceを検証対象にしてはならない。
+2. `codex --version`で検証したCLIバージョンを記録する。
+3. `/hooks`を開き、対象hookのSourceが検証対象リポジトリの`.codex/hooks.json`であること、Reviewが`0`、InstalledとActiveの対象件数が一致することを確認する。未信頼hookはコマンド内容を読んでから信頼する。
+4. 実サービスへ接続しない偽コマンドを`PATH`の先頭に置き、Codexへ危険操作を依頼する。
+5. `Command blocked by PreToolUse hook`とblock理由が画面に表示されることを確認する。エラーだけで無音終了した場合は失敗とする。
+6. 偽コマンドの実行マーカーが存在しないことを確認する。存在した場合は、shell testが通っていてもpushを停止する。
+
+検証記録には、CLI version、commit SHA（`source_sha`）、Source、Review/Installed/Active、block reason、marker absentを必ず残す。
 
 `vercel env rm`ガードは、次のように隔離して確認する。実際のVercel projectや認証情報を使ってはならない。
 
 ```bash
 source_repo="$(git rev-parse --show-toplevel)"
-source_branch="$(git branch --show-current)"
 validation_dir="$(mktemp -d /tmp/riff-gear-codex-hook.XXXXXX)"
 validation_repo="$validation_dir/repo"
 probe_dir="$validation_dir/probe"
 
-# linked worktree固有の設定探索を検証結果へ混ぜないため、検証対象commitを独立cloneする。
-git clone --local --no-hardlinks --branch "$source_branch" "$source_repo" "$validation_repo"
+# 未commitのhook変更を検証して成功扱いにしないため、cleanなcommitを固定する。
+test -z "$(git -C "$source_repo" status --porcelain)"
+source_sha="$(git -C "$source_repo" rev-parse HEAD)"
+test -n "$source_sha"
+
+# linked worktree固有の設定探索を検証結果へ混ぜないため、対象commitを独立cloneしてdetachする。
+git clone --local --no-hardlinks "$source_repo" "$validation_repo"
+git -C "$validation_repo" checkout --detach "$source_sha"
+clone_sha="$(git -C "$validation_repo" rev-parse HEAD)"
+test "$source_sha" = "$clone_sha"
+test -z "$(git -C "$source_repo" status --porcelain)"
+
+# PATHを差し替える前にCLI実体を解決し、検証用PATHに依存せず同じCLIを起動する。
+codex_bin="$(command -v codex)"
+test -n "$codex_bin" -a -x "$codex_bin"
 mkdir -p "$probe_dir/bin"
 cat > "$probe_dir/bin/vercel" <<SH
 #!/usr/bin/env bash
@@ -102,7 +117,7 @@ SH
 chmod +x "$probe_dir/bin/vercel"
 
 PATH="$probe_dir/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
-  codex --no-alt-screen -C "$validation_repo" \
+  "$codex_bin" --no-alt-screen -C "$validation_repo" \
   -c 'shell_environment_policy.inherit="all"'
 ```
 
@@ -116,9 +131,14 @@ Codexを終了した後、マーカーがないことを確認する。
 
 ```bash
 test ! -e "$probe_dir/vercel-executed.marker"
+source_end_sha="$(git -C "$source_repo" rev-parse HEAD)"
+clone_end_sha="$(git -C "$validation_repo" rev-parse HEAD)"
+test "$source_sha" = "$source_end_sha"
+test "$source_sha" = "$clone_end_sha"
+test -z "$(git -C "$source_repo" status --porcelain)"
 ```
 
-2026-08-23のCodex CLI 0.147.0では、linked worktreeから起動した検証でproject-local hookが読み込まれず、シェルテスト通過後も偽`vercel`が実行される事象を確認した。同じcommitの独立cloneでは、hookをレビュー・信頼した後に理由つきでblockされ、マーカーも作成されなかった。したがって、`/hooks`のSource確認と実行マーカー確認を省略しない。
+2026-08-23のCodex CLI 0.147.0では、linked worktreeから起動した検証でproject-local hookが読み込まれず、シェルテスト通過後も偽`vercel`が実行される事象を確認した。同じSHAの独立cloneでは、hookをレビュー・信頼した後に理由つきでblockされ、マーカーも作成されなかった。したがって、`/hooks`のSource確認、開始・終了時のSHA一致、sourceのclean確認、実行マーカー確認を省略しない。
 
 ## PR作成前の確認
 
