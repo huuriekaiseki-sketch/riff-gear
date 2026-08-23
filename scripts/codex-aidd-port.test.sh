@@ -34,12 +34,22 @@ if len(files) != 10:
     raise SystemExit(f"expected 10 Codex agents, got {len(files)}")
 
 required = {"name", "description", "developer_instructions"}
+read_only_agents = {
+    "completeness-critic",
+    "reviewer",
+    "sweep-ui",
+    "sweep-data",
+    "sweep-db",
+    "sweep-types",
+}
 for path in files:
     with open(path, "rb") as handle:
         data = tomllib.load(handle)
     missing = required - data.keys()
     if missing:
         raise SystemExit(f"{path}: missing {sorted(missing)}")
+    if data["name"] in read_only_agents and data.get("sandbox_mode") != "read-only":
+        raise SystemExit(f"{path}: read-only agent must set sandbox_mode = 'read-only'")
 PY
 
 PRE_TOOL_COMMAND="$(node -e '

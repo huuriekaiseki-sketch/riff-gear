@@ -21,17 +21,59 @@ description: 開発者に「このプロダクトにこの機能は必要か？�
 
 ## 第2段階: 6役割ワークフロー
 
-1人で順にこなすチェックリスト付きフェーズ。省略禁止。核は「**実装前に調査を強制する**」「**実装後に片付けを強制する**」の2点。
+親エージェントが各Roleを結線するチェックリスト付きフェーズ。省略禁止。核は「**実装前に調査を強制する**」「**実装後に片付けを強制する**」の2点。
 
 ### Role 1: Sweeper（既存コード調査）
 
-対象機能に関連する既存実装を機械的に洗い出す。
+親エージェントがCodexネイティブPhase 1をオーケストレーションし、対象機能に関連する既存実装を4軸で一度だけ洗い出す。単一agentによる検索へ置き換えたり、後続Phase 2で同じSweepを再実行したりしない。
 
-1. 機能のキーワードで `grep -rn` し、関連コードを一覧化する（`app/`, `lib/`, `supabase/migrations/`, `.env.local.example`）
-2. ヒットしたファイルを全件読み、現状を把握する
-3. **「実は既に実装済み」を必ず疑う**（過去にissue #9で発生: 実装済み機能が未実装として起票されていた）
+#### 1-A. Route判定
 
-出力: 「ファイルパス:行番号 — 現状」の箇条書き
+入力は`taskDescription`と、`git diff --name-only`または変更予定から得た`changedFiles`。判定順序は固定する。
+
+1. `changedFiles`が1件以上あり、全件がAIDDメタ改修（`.agents/skills/feature-proposal/`、`.codex/agents/`、`docs/agents/`、`scripts/codex-aidd-`）なら最優先で`aidd-phase1-meta`を返す。4 Sweepは起動せず、メタ変更の要約をfindingsとしてRole 2以降へ渡す
+2. メタ改修でなく`changedFiles`が1件以上なら、パスだけで高リスク判定する。`supabase/migrations/`、`lib/supabase/`、`middleware.ts`、またはパス中の`auth`・`rls`・`policy`・`grant`は高リスク。高リスクでもPhase 1は実行するが、結果に`risk: high`と人間の慎重な確認が必要な旨を残す
+3. `changedFiles`が空の場合だけ、`taskDescription`の`migration`・`マイグレーション`・`schema`・`スキーマ`・`supabase`・`middleware`・`auth`・`認証`・`login`・`ログイン`・`rls`・`policy`・`ポリシー`・`grant`・`権限`を補助判定に使う。一致したら自動Sweepせず`needs-confirmation`を返し、実際に高リスク領域へ触れるか開発者へ確認して回答を待つ
+4. いずれにも該当しなければ通常のPhase 1へ進む
+
+ファイルが分かる場合は説明文のキーワードでリスクを上書きしない。否定文の単純一致による誤routeを避けるためである。
+
+#### 1-B. 4 Sweepの並列起動とjoin
+
+最大ラウンド数は**3**。親エージェントは各ラウンドで次の4 agentをすべて起動してからjoinし、4体すべての結果が揃うまでCompleteness Criticや次フェーズを起動しない。
+
+- `sweep-ui`
+- `sweep-data`
+- `sweep-db`
+- `sweep-types`
+
+初回は各agentへ`taskDescription`と担当軸を渡す。2巡目以降は、それまでの4軸findingsとCompleteness Criticの`追加調査対象`も渡し、未調査箇所だけを追加調査させる。各Sweepの結果契約は`status: pass|blocked`と空でない`detail`。`pass`は調査完了を意味し、指摘なしは`detail: 指摘なし`で表す。
+
+#### 1-C. 結果検証とfail-closed
+
+join後、4結果を個別に検証する。結果なし、`status`が`pass|blocked`以外、`detail`欠落・空文字、または1体でも`blocked`なら、その時点で`blocked`を返す。欠けた結果を`指摘なし`で補完せず、Completeness CriticとPhase 2は起動しない。
+
+全体が`pass`なら、`ui`・`data`・`db`・`types`別にfindingsへ追記する。後続ラウンドの結果で前ラウンドを上書きしない。
+
+#### 1-D. Completeness CriticとLoop Until Dry
+
+4 Sweepがすべて有効な`pass`だった場合だけ、累積findingsを`completeness-critic`へ渡す。応答は次の2択だけを有効とする。
+
+- 完全一致の`新規指摘なし`: dry streakを1増やす
+- `追加調査対象:`で始まり、1件以上の箇条書きがある: dry streakを0へ戻し、内容を次ラウンドの4 Sweepへ渡す
+
+応答なし・それ以外の形式は`blocked`。**2ラウンド連続**で`新規指摘なし`なら`pass`。3巡を終えてdry streakが2未満なら、調査未収束として`blocked`を返す。Critic自身に終了宣言やラウンド管理を委ねず、親エージェントが連続回数を数える。
+
+#### 1-E. Phase 1出力と一度だけの受け渡し
+
+出力は次の4状態に正規化する。
+
+- `aidd-phase1-meta`: Sweepを省略した理由とメタfindings
+- `needs-confirmation`: 確認理由、キーワード一致、開発者回答待ち
+- `pass`: `risk`、実行ラウンド数、dry streak、ラウンド履歴を保持した4軸`findings`
+- `blocked`: 失敗stage・agent・理由・取得済みfindings。実装開始不可
+
+`pass`または`aidd-phase1-meta`のfindingsはRole 2とRole 3へ渡し、承認後はRole 4のPhase 2入力へ同じオブジェクトを渡す。Role 1の旧来の`grep`調査は追加実行せず、Role 4もPhase 1 Sweepを再起動しない。`blocked`と`needs-confirmation`ではRole 4へ進まない。4軸findingsから「実は既に実装済み」を必ず疑い、該当時はRole 3で実装せず終了する選択肢を提示する。
 
 ### Role 2: Finder（関連イシュー・過去事例）
 
@@ -51,7 +93,7 @@ Sweeper・Finderの結果を踏まえ、実装方針を開発者に確認し、�
 
 ### Role 4: Implementer（実装・検証）
 
-**影響層が2つ以上ならCodexネイティブのPhase2を使う**: Role 3で選ばれた層が2つ以上の場合、以下を親エージェントがオーケストレーションする。各段階で全subagentの完了を待ち、結果を検証してから次へ進む。
+**影響層が2つ以上ならCodexネイティブのPhase2を使う**: Role 3で選ばれた層が2つ以上の場合、以下を親エージェントがオーケストレーションする。各段階で全subagentの完了を待ち、結果を検証してから次へ進む。入力には承認済み方針とRole 1の4軸findingsを含め、Phase 1 Sweepは再実行しない。
 
 1. 選ばれた層に対応する`implementer-ui`・`implementer-data`・`implementer-db`を並列起動する。各依頼にタスク、承認済み方針、担当層、他agentと同じファイルシステムを共有していることを含める。結果は`status: pass|blocked`、`detail`、`changedFiles`で受け取る
 2. 結果が無い、形式が不正、または1体でも`blocked`なら後続を起動せず、`aidd-phase2-blocked(stage=implement)`としてRole 5へ引き継ぎ、開発者へ報告する

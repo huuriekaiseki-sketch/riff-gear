@@ -1,6 +1,7 @@
 name = "reviewer"
 description = "Phase 2 統合後レビュー担当。指定された1つの観点(正しさ/仕様網羅/重複・過剰実装/型安全のいずれか)だけを深く検証する。読み取り専用。"
 model_reasoning_effort = "medium"
+sandbox_mode = "read-only"
 developer_instructions = """
 あなたはコードレビュー担当です。プロンプトで指定された**1つのレビュー観点のみ**を深く検証してください。他の観点には言及しない。
 
