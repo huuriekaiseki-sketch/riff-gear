@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel)"
 HOOKS_FILE="$ROOT/.codex/hooks.json"
+CLAUDE_SETTINGS_FILE="$ROOT/.claude/settings.json"
 SKILL_FILE="$ROOT/.agents/skills/feature-proposal/SKILL.md"
 
 fail() {
@@ -55,5 +56,37 @@ DENY_INPUT='{"tool_name":"Bash","tool_input":{"command":"psql -c \"drop table us
 DENY_OUTPUT="$(printf '%s' "$DENY_INPUT" | env -u CLAUDE_PROJECT_DIR bash -c "$PRE_TOOL_COMMAND")"
 DENY_DECISION="$(printf '%s' "$DENY_OUTPUT" | jq -r '.hookSpecificOutput.permissionDecision // ""')"
 [[ "$DENY_DECISION" == "deny" ]] || fail "危険なDDLをhookが拒否しませんでした: $DENY_OUTPUT"
+
+VERCEL_HOOK_COMMAND="$(node -e '
+  const fs = require("fs");
+  const hooks = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+  const command = hooks.hooks.PreToolUse
+    .flatMap((group) => group.hooks)
+    .find((hook) => hook.command.includes("check-vercel-env-danger.sh"))
+    ?.command;
+  process.stdout.write(command || "");
+' "$HOOKS_FILE")"
+[[ -n "$VERCEL_HOOK_COMMAND" ]] || fail "Codex用のVercel環境変数削除ガードが設定されていません"
+
+VERCEL_INPUT='{"tool_name":"Bash","tool_input":{"command":"vercel env rm SUPABASE_SERVICE_ROLE_KEY preview"}}'
+VERCEL_OUTPUT="$(printf '%s' "$VERCEL_INPUT" | env -u CLAUDE_PROJECT_DIR bash -c "$VERCEL_HOOK_COMMAND")"
+VERCEL_DECISION="$(printf '%s' "$VERCEL_OUTPUT" | jq -r '.hookSpecificOutput.permissionDecision // ""')"
+[[ "$VERCEL_DECISION" == "deny" ]] || fail "Codexで危険なVercel環境変数削除を拒否しませんでした: $VERCEL_OUTPUT"
+
+CLAUDE_VERCEL_COMMAND="$(node -e '
+  const fs = require("fs");
+  const hooks = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+  const command = hooks.hooks.PreToolUse
+    .flatMap((group) => group.hooks)
+    .find((hook) => hook.command.includes("check-vercel-env-danger.sh"))
+    ?.command;
+  process.stdout.write(command || "");
+' "$CLAUDE_SETTINGS_FILE")"
+[[ -n "$CLAUDE_VERCEL_COMMAND" ]] || fail "Claude Code用のVercel環境変数削除ガードが設定されていません"
+
+CLAUDE_VERCEL_OUTPUT="$(printf '%s' "$VERCEL_INPUT" | CLAUDE_PROJECT_DIR="$ROOT" bash -c "$CLAUDE_VERCEL_COMMAND")"
+CLAUDE_VERCEL_DECISION="$(printf '%s' "$CLAUDE_VERCEL_OUTPUT" | jq -r '.hookSpecificOutput.permissionDecision // ""')"
+[[ "$CLAUDE_VERCEL_DECISION" == "ask" ]] \
+  || fail "Claude Codeの確認フローが維持されていません: $CLAUDE_VERCEL_OUTPUT"
 
 printf 'PASS: Codex AIDD port smoke test\n'

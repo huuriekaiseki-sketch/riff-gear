@@ -22,6 +22,7 @@ VERCEL_ENV_RM_PATTERN='(^|[[:space:](])((npx|pnpm[[:space:]]+dlx|yarn[[:space:]]
 
 INPUT="$(cat)"
 TOOL_NAME="$(printf '%s' "$INPUT" | jq -r '.tool_name // ""')"
+HOOK_RUNTIME="${1:-claude}"
 
 if [[ "$TOOL_NAME" != "Bash" ]]; then
   exit 0
@@ -31,8 +32,13 @@ COMMAND="$(printf '%s' "$INPUT" | jq -r '.tool_input.command // ""')"
 
 while IFS= read -r seg; do
   if [[ "$seg" =~ $VERCEL_ENV_RM_PATTERN ]]; then
-    jq -n \
-      '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "ask", permissionDecisionReason: "vercel env rm/removeは環境を1つ指定しても変数を全環境ぶん丸ごと削除します(2026-08-21にriff-gearのSUPABASE_SERVICE_ROLE_KEYで実際に事故発生・Production分も消えた)。Sensitive変数は削除後に値を読み戻せないため復元不可です。本当に全環境から削除する意図か確認してください。特定の環境からだけ外したい場合はVercelダッシュボードで対象環境のチェックを外してください。"}}'
+    DECISION="ask"
+    if [[ "$HOOK_RUNTIME" == "codex" ]]; then
+      DECISION="deny"
+    fi
+
+    jq -n --arg decision "$DECISION" \
+      '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: $decision, permissionDecisionReason: "vercel env rm/removeは環境を1つ指定しても変数を全環境ぶん丸ごと削除します(2026-08-21にriff-gearのSUPABASE_SERVICE_ROLE_KEYで実際に事故発生・Production分も消えた)。Sensitive変数は削除後に値を読み戻せないため復元不可です。本当に全環境から削除する意図か確認してください。特定の環境からだけ外したい場合はVercelダッシュボードで対象環境のチェックを外してください。"}}'
     exit 0
   fi
 done < <(split_segments "$COMMAND")
