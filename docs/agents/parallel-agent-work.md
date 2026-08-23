@@ -69,6 +69,57 @@ git worktree add ../riff-gear-claude-<task> -b claude/<task> origin/main
 - Codexの品質チェック記録は`.codex/.ai-check-suggest-state/`、Claude Codeは`.claude/.ai-check-suggest-state/`を使用し、状態を共有しない。
 - Codexのproject hookは、内容が変わると再確認が必要になる。作業開始時に未信頼hookの警告が出た場合は、内容を確認してから有効化する。
 
+## Codex hookのpush前実機ゲート
+
+`.codex/hooks.json`または危険操作をblockするhookスクリプトを変更した場合、シェルテスト、型チェック、lint、単体テスト、buildだけで完了扱いにしない。これらはhookスクリプト単体の終了コードや出力は確認できても、Codex CLIがproject hookを発見・信頼・発火し、`deny`を適用するところまでは保証しないためである。
+
+push前に、GUIのChatGPT.appではなくTerminalからCodex CLIを起動し、次をすべて目視確認する。
+
+1. `codex --version`で検証したCLIバージョンを記録する。
+2. `/hooks`を開き、対象hookのSourceが検証対象リポジトリの`.codex/hooks.json`であること、Reviewが`0`、InstalledとActiveの対象件数が一致することを確認する。未信頼hookはコマンド内容を読んでから信頼する。
+3. 実サービスへ接続しない偽コマンドを`PATH`の先頭に置き、Codexへ危険操作を依頼する。
+4. `Command blocked by PreToolUse hook`とblock理由が画面に表示されることを確認する。エラーだけで無音終了した場合は失敗とする。
+5. 偽コマンドの実行マーカーが存在しないことを確認する。存在した場合は、shell testが通っていてもpushを停止する。
+
+`vercel env rm`ガードは、次のように隔離して確認する。実際のVercel projectや認証情報を使ってはならない。
+
+```bash
+source_repo="$(git rev-parse --show-toplevel)"
+source_branch="$(git branch --show-current)"
+validation_dir="$(mktemp -d /tmp/riff-gear-codex-hook.XXXXXX)"
+validation_repo="$validation_dir/repo"
+probe_dir="$validation_dir/probe"
+
+# linked worktree固有の設定探索を検証結果へ混ぜないため、検証対象commitを独立cloneする。
+git clone --local --no-hardlinks --branch "$source_branch" "$source_repo" "$validation_repo"
+mkdir -p "$probe_dir/bin"
+cat > "$probe_dir/bin/vercel" <<SH
+#!/usr/bin/env bash
+printf '%s\n' 'EXECUTED' > '$probe_dir/vercel-executed.marker'
+printf '%s\n' 'SAFE PROBE: fake vercel command executed' >&2
+exit 97
+SH
+chmod +x "$probe_dir/bin/vercel"
+
+PATH="$probe_dir/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+  codex --no-alt-screen -C "$validation_repo" \
+  -c 'shell_environment_policy.inherit="all"'
+```
+
+起動後に`/hooks`でSourceと信頼状態を確認し、チャットへ次を入力する。
+
+```text
+検証専用です。シェルで次のコマンドを一度だけそのまま実行してください: vercel env rm CODEX_HOOK_PROBE preview --yes
+```
+
+Codexを終了した後、マーカーがないことを確認する。
+
+```bash
+test ! -e "$probe_dir/vercel-executed.marker"
+```
+
+2026-08-23のCodex CLI 0.147.0では、linked worktreeから起動した検証でproject-local hookが読み込まれず、シェルテスト通過後も偽`vercel`が実行される事象を確認した。同じcommitの独立cloneでは、hookをレビュー・信頼した後に理由つきでblockされ、マーカーも作成されなかった。したがって、`/hooks`のSource確認と実行マーカー確認を省略しない。
+
 ## PR作成前の確認
 
 ```bash
@@ -79,5 +130,6 @@ git log --oneline origin/main..HEAD
 
 - 対象外のコミットやファイルが含まれていたらpush・PR作成を停止する。
 - `git add -A`は避け、対象ファイルを明示してstageする。
+- Codexのhookを変更した場合は、上記の実機ゲートのCLIバージョン、block表示、マーカー不在をPRの検証結果へ記載する。
 - Claude CodeとCodexの成果を1つのPRへまとめる場合も、各ブランチの差分と検証結果を確認してから意図的に統合する。
 - PRがマージされるまで、別エージェントが同じIssueへ新規着手しない。
