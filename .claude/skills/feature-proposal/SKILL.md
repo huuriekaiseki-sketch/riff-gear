@@ -35,7 +35,7 @@ description: 開発者に「このプロダクトにこの機能は必要か？�
 
 ### Role 2: Finder（関連イシュー・過去事例）
 
-1. 機能キーワードを2〜3個抽出し、`gh issue list --search` と `gh pr list --search` で**CLOSED/MERGEDも含めて**検索する
+1. 機能キーワードを2〜3個抽出し、`gh issue list --state all --search "<keyword>"` と `gh pr list --state all --search "<keyword>"` で**CLOSED/MERGEDも含めて**検索する
 2. 重複対応・既にクローズ済み・過去に見送られた経緯がないか確認する
 
 出力: 「#番号 状態 タイトル — 関連度メモ」の箇条書き
