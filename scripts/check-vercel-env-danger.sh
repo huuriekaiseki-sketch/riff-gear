@@ -12,14 +12,11 @@ set -euo pipefail
 # exit 2(ブロック)で止める(check-direct-ddl-execution.shと同じ設計)。
 command -v jq >/dev/null 2>&1 || { echo "jq not found: vercel env guard cannot run" >&2; exit 2; }
 
-split_segments() {
-  printf '%s\n' "$1" | sed -E 's/(\|\||&&|[;&|])/\n/g'
-}
-
-# 「vercel env rm」「vercel env remove」がセグメント先頭の実行位置にあるか。
-# 環境変数代入、env、sudo、npx/pnpm dlx/yarn dlx経由、および実行ファイルの
-# 絶対・相対パス経由も、コマンド先頭の明示プレフィックスとして対象にする。
-VERCEL_ENV_RM_PATTERN='^[[:space:]]*(\([[:space:]]*)?([[:alnum:]_]+=[^[:space:]]*[[:space:]]+)*(env[[:space:]]+([[:alnum:]_]+=[^[:space:]]*[[:space:]]+)*)?(sudo[[:space:]]+)?((npx|pnpm[[:space:]]+dlx|yarn[[:space:]]+dlx)[[:space:]]+)?([[:alnum:]_./-]+/)?vercel[[:space:]]+env[[:space:]]+(rm|remove)([[:space:]]|$)'
+# shellの完全な構文解析を正規表現で再現すると、command substitutionや
+# wrapper optionの組み合わせによりfail-openになる。入力はevalせず、独立した
+# vercelトークンから始まる危険列を位置にかかわらず検知して安全側へ倒す。
+# そのため表示目的の文字列も拒否し得るが、破壊的削除の見逃しを防ぐ方を優先する。
+VERCEL_ENV_RM_PATTERN='(^|[^[:alnum:]_.-])([[:alnum:]_./-]+/)?vercel[[:space:]]+env[[:space:]]+(rm|remove)([[:space:]]|$)'
 
 INPUT="$(cat)"
 TOOL_NAME="$(printf '%s' "$INPUT" | jq -r '.tool_name // ""')"
@@ -31,17 +28,15 @@ fi
 
 COMMAND="$(printf '%s' "$INPUT" | jq -r '.tool_input.command // ""')"
 
-while IFS= read -r seg; do
-  if [[ "$seg" =~ $VERCEL_ENV_RM_PATTERN ]]; then
-    DECISION="ask"
-    if [[ "$HOOK_RUNTIME" == "codex" ]]; then
-      DECISION="deny"
-    fi
-
-    jq -n --arg decision "$DECISION" \
-      '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: $decision, permissionDecisionReason: "vercel env rm/removeは環境を1つ指定しても変数を全環境ぶん丸ごと削除します(2026-08-21にriff-gearのSUPABASE_SERVICE_ROLE_KEYで実際に事故発生・Production分も消えた)。Sensitive変数は削除後に値を読み戻せないため復元不可です。本当に全環境から削除する意図か確認してください。特定の環境からだけ外したい場合はVercelダッシュボードで対象環境のチェックを外してください。"}}'
-    exit 0
+if [[ "$COMMAND" =~ $VERCEL_ENV_RM_PATTERN ]]; then
+  DECISION="ask"
+  if [[ "$HOOK_RUNTIME" == "codex" ]]; then
+    DECISION="deny"
   fi
-done < <(split_segments "$COMMAND")
+
+  jq -n --arg decision "$DECISION" \
+    '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: $decision, permissionDecisionReason: "vercel env rm/removeは環境を1つ指定しても変数を全環境ぶん丸ごと削除します(2026-08-21にriff-gearのSUPABASE_SERVICE_ROLE_KEYで実際に事故発生・Production分も消えた)。Sensitive変数は削除後に値を読み戻せないため復元不可です。本当に全環境から削除する意図か確認してください。特定の環境からだけ外したい場合はVercelダッシュボードで対象環境のチェックを外してください。"}}'
+  exit 0
+fi
 
 exit 0

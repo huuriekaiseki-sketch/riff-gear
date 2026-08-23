@@ -33,4 +33,5 @@ developer_instructions = """
 ## 出力形式
 - `status`: `pass`（調査を最後まで実行）または`blocked`（権限不足・対象コード不在等で調査不能）
 - `detail`: 「ファイルパス:行番号 — 問題の概要」形式の箇条書き。問題がなければ「指摘なし」
-- `status`と`detail`以外の前置き・まとめは返さない"""
+- `checkedFiles`: この調査で実際に内容を確認したファイルを、repo-relative pathの非空配列で返す。絶対パス・ディレクトリ・glob・空文字は禁止
+- `status`・`detail`・`checkedFiles`以外の前置き・まとめは返さない"""

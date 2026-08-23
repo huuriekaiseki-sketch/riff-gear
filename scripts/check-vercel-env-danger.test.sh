@@ -31,6 +31,16 @@ assert_empty() {
   fi
 }
 
+assert_file_absent() {
+  local path="$1" label="$2"
+  if [ ! -e "$path" ]; then
+    echo "  OK: $label"
+  else
+    echo "  NG: $label (unexpected file=$path)"
+    fail=1
+  fi
+}
+
 assert_decision_and_reason() {
   local actual="$1" expected="$2" label="$3"
   local decision reason
@@ -115,10 +125,10 @@ run_hook "sudo vercel env rm SUPABASE_SERVICE_ROLE_KEY"
 assert_eq "$EXIT_CODE" "0" "exit 0"
 assert_decision_and_reason "$OUT" "deny" "sudo経由"
 
-echo "=== scenario 13: echo内のvercel env rm → 無出力 ==="
+echo "=== scenario 13: echo内のvercel env rm → 安全側でdeny + reason ==="
 run_hook "echo /usr/local/bin/vercel env rm SUPABASE_SERVICE_ROLE_KEY"
 assert_eq "$EXIT_CODE" "0" "exit 0"
-assert_empty "$OUT" "表示文字列内の危険トークンは無出力"
+assert_decision_and_reason "$OUT" "deny" "表示文字列内も安全側で拒否"
 
 echo "=== scenario 14: 相対パスvercel env remove → deny + reason ==="
 run_hook "./node_modules/.bin/vercel env remove SUPABASE_SERVICE_ROLE_KEY"
@@ -139,6 +149,40 @@ echo "=== scenario 17: vercel env ls → 無出力 ==="
 run_hook "vercel env ls"
 assert_eq "$EXIT_CODE" "0" "exit 0"
 assert_empty "$OUT" "安全なvercelコマンドは無出力"
+
+echo "=== scenario 18: echo内command substitution → deny + reason ==="
+run_hook 'echo "$(vercel env rm KEY preview --yes)"'
+assert_eq "$EXIT_CODE" "0" "exit 0"
+assert_decision_and_reason "$OUT" "deny" "echo内command substitution"
+
+echo "=== scenario 19: 代入内command substitution → deny + reason ==="
+run_hook 'result=$(vercel env rm KEY preview --yes)'
+assert_eq "$EXIT_CODE" "0" "exit 0"
+assert_decision_and_reason "$OUT" "deny" "代入内command substitution"
+
+echo "=== scenario 20: command wrapper → deny + reason ==="
+run_hook "command vercel env rm KEY preview --yes"
+assert_eq "$EXIT_CODE" "0" "exit 0"
+assert_decision_and_reason "$OUT" "deny" "command wrapper"
+
+echo "=== scenario 21: env option wrapper → deny + reason ==="
+run_hook "env -i vercel env rm KEY preview --yes"
+assert_eq "$EXIT_CODE" "0" "exit 0"
+assert_decision_and_reason "$OUT" "deny" "env -i wrapper"
+
+echo "=== scenario 22: sudo option wrapper → deny + reason ==="
+run_hook "sudo -n vercel env rm KEY preview --yes"
+assert_eq "$EXIT_CODE" "0" "exit 0"
+assert_decision_and_reason "$OUT" "deny" "sudo -n wrapper"
+
+echo "=== scenario 23: hookはshell入力をevalしない ==="
+marker_dir="$(mktemp -d)"
+marker="$marker_dir/must-not-exist"
+trap 'rm -f "$marker"; rmdir "$marker_dir"' EXIT
+run_hook "echo \$(touch \"$marker\"); vercel env rm KEY preview --yes"
+assert_eq "$EXIT_CODE" "0" "exit 0"
+assert_decision_and_reason "$OUT" "deny" "副作用を含む入力"
+assert_file_absent "$marker" "入力中のcommand substitutionを実行しない"
 
 if [ "$fail" -ne 0 ]; then
   echo "FAILED"

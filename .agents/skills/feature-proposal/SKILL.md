@@ -40,6 +40,8 @@ description: 開発者に「このプロダクトにこの機能は必要か？�
 
 #### 1-B. 4 Sweepの並列起動とjoin
 
+通常のPhase 1へ進む前に、親エージェントは各Sweepの「調査対象」に一致する現在のファイルを列挙し、重複を除いてsortしたrepo-relative path配列を軸別の`targetInventory`（`ui`・`data`・`db`・`types`）として固定する。列挙に失敗した場合は`blocked`。Completeness Criticが追加調査対象を返した場合は、実在するrepo-relative fileへ解決して担当軸の`targetInventory`へ追記する。
+
 最大ラウンド数は**3**。親エージェントは各ラウンドで次の4 agentをすべて起動してからjoinし、4体すべての結果が揃うまでCompleteness Criticや次フェーズを起動しない。
 
 - `sweep-ui`
@@ -47,17 +49,17 @@ description: 開発者に「このプロダクトにこの機能は必要か？�
 - `sweep-db`
 - `sweep-types`
 
-初回は各agentへ`taskDescription`と担当軸を渡す。2巡目以降は、それまでの4軸findingsとCompleteness Criticの`追加調査対象`も渡し、未調査箇所だけを追加調査させる。各Sweepの結果契約は`status: pass|blocked`と空でない`detail`。`pass`は調査完了を意味し、指摘なしは`detail: 指摘なし`で表す。
+初回は各agentへ`taskDescription`、担当軸、その軸の`targetInventory`を渡す。2巡目以降は、それまでの4軸findings、軸別の累積`checkedFiles`、Completeness Criticの`追加調査対象`も渡し、未調査箇所だけを追加調査させる。各Sweepの結果契約は`status: pass|blocked`、空でない`detail`、非空の`checkedFiles`。`checkedFiles`はそのラウンドで実際に内容を確認したファイルのrepo-relative path配列であり、絶対パス・ディレクトリ・glob・空文字を許可しない。`pass`は調査完了を意味し、指摘なしは`detail: 指摘なし`で表す。
 
 #### 1-C. 結果検証とfail-closed
 
-join後、4結果を個別に検証する。結果なし、`status`が`pass|blocked`以外、`detail`欠落・空文字、または1体でも`blocked`なら、その時点で`blocked`を返す。欠けた結果を`指摘なし`で補完せず、Completeness CriticとPhase 2は起動しない。
+join後、4結果を個別に検証する。結果なし、`status`が`pass|blocked`以外、`detail`欠落・空文字、`checkedFiles`欠落・空配列・配列以外、要素が非文字列・空文字・絶対パス・ディレクトリ・glob・非実在ファイル・担当軸の`targetInventory`外、または1体でも`blocked`なら、その時点で`blocked`を返す。欠けた結果を`指摘なし`や推測したpathで補完せず、Completeness CriticとPhase 2は起動しない。
 
-全体が`pass`なら、`ui`・`data`・`db`・`types`別にfindingsへ追記する。後続ラウンドの結果で前ラウンドを上書きしない。
+全体が`pass`なら、`ui`・`data`・`db`・`types`別にfindingsと`checkedFiles`へ追記する。後続ラウンドの結果で前ラウンドを上書きせず、`checkedFiles`は軸別に重複を除いた累積集合として保持する。
 
 #### 1-D. Completeness CriticとLoop Until Dry
 
-4 Sweepがすべて有効な`pass`だった場合だけ、累積findingsを`completeness-critic`へ渡す。応答は次の2択だけを有効とする。
+4 Sweepがすべて有効な`pass`だった場合だけ、軸別の`targetInventory`、軸別の累積`checkedFiles`、累積findingsを同時に`completeness-critic`へ渡す。いずれかを省略して起動しない。応答は次の2択だけを有効とする。
 
 - 完全一致の`新規指摘なし`: dry streakを1増やす
 - `追加調査対象:`で始まり、1件以上の箇条書きがある: dry streakを0へ戻し、内容を次ラウンドの4 Sweepへ渡す
@@ -70,14 +72,14 @@ join後、4結果を個別に検証する。結果なし、`status`が`pass|bloc
 
 - `aidd-phase1-meta`: Sweepを省略した理由とメタfindings
 - `needs-confirmation`: 確認理由、キーワード一致、開発者回答待ち
-- `pass`: `risk`、実行ラウンド数、dry streak、ラウンド履歴を保持した4軸`findings`
+- `pass`: `risk`、実行ラウンド数、dry streak、軸別`targetInventory`、軸別の累積`checkedFiles`、ラウンド履歴を保持した4軸`findings`
 - `blocked`: 失敗stage・agent・理由・取得済みfindings。実装開始不可
 
 `pass`または`aidd-phase1-meta`のfindingsはRole 2とRole 3へ渡し、承認後はRole 4のPhase 2入力へ同じオブジェクトを渡す。Role 1の旧来の`grep`調査は追加実行せず、Role 4もPhase 1 Sweepを再起動しない。`blocked`と`needs-confirmation`ではRole 4へ進まない。4軸findingsから「実は既に実装済み」を必ず疑い、該当時はRole 3で実装せず終了する選択肢を提示する。
 
 ### Role 2: Finder（関連イシュー・過去事例）
 
-1. 機能キーワードを2〜3個抽出し、`gh issue list --search` と `gh pr list --search` で**CLOSED/MERGEDも含めて**検索する
+1. 機能キーワードを2〜3個抽出し、`gh issue list --state all --search "<keyword>"` と `gh pr list --state all --search "<keyword>"` で**CLOSED/MERGEDも含めて**検索する
 2. 重複対応・既にクローズ済み・過去に見送られた経緯がないか確認する
 
 出力: 「#番号 状態 タイトル — 関連度メモ」の箇条書き
@@ -93,7 +95,9 @@ Sweeper・Finderの結果を踏まえ、実装方針を開発者に確認し、�
 
 ### Role 4: Implementer（実装・検証）
 
-**影響層が2つ以上ならCodexネイティブのPhase2を使う**: Role 3で選ばれた層が2つ以上の場合、以下を親エージェントがオーケストレーションする。各段階で全subagentの完了を待ち、結果を検証してから次へ進む。入力には承認済み方針とRole 1の4軸findingsを含め、Phase 1 Sweepは再実行しない。
+**影響層が2つ以上ならCodexネイティブのPhase2を必須で使う**: Role 3で選ばれた層が2つ以上の場合、手動実装への降格を禁止し、以下を親エージェントがオーケストレーションする。各段階で全subagentの完了を待ち、結果を検証してから次へ進む。入力には承認済み方針とRole 1の4軸findingsを含め、Phase 1 Sweepは再実行しない。
+
+開始前に、選択層のimplementer、`integrator`、`reviewer`のcustom agent設定をロードでき、必要数をspawnできることを確認する。custom agentのロード失敗、spawn機能の利用不能、thread上限、または同等の理由でPhase 2の必須agentを開始できないことが開始前・途中を問わず判明したら、`aidd-phase2-blocked(stage=availability)`としてその場で停止し、人間へ理由を報告する。手動実装へ切り替えない。
 
 1. 選ばれた層に対応する`implementer-ui`・`implementer-data`・`implementer-db`を並列起動する。各依頼にタスク、承認済み方針、担当層、他agentと同じファイルシステムを共有していることを含める。結果は`status: pass|blocked`、`detail`、`changedFiles`で受け取る
 2. 結果が無い、形式が不正、または1体でも`blocked`なら後続を起動せず、`aidd-phase2-blocked(stage=implement)`としてRole 5へ引き継ぎ、開発者へ報告する
@@ -101,9 +105,9 @@ Sweeper・Finderの結果を踏まえ、実装方針を開発者に確認し、�
 4. `reviewer`を「正しさ」「仕様網羅」「重複・過剰実装」「型安全」の4観点で並列起動し、それぞれ1観点だけを検証させる
 5. 4体すべてが`pass`なら`aidd-phase2-pass`とする。`fail`または結果不正があれば指摘を全実装担当へ返し、実装→統合→4観点レビューをやり直す。差し戻しは最大3回とし、解消しなければ`aidd-phase2-blocked(stage=review)`として停止する
 
-影響層が1つだけなら以下の手動フローでよい（並列オーケストレーションのオーバーヘッドに見合わないため）。
+影響層が1つだけなら、Role 3の層確認とは別に「親エージェントが手動実装フローで進めてよいか」を人間へ確認し、明示承認を待つ。承認がない限り実装を開始しない。承認後に限り、以下の手動フローを使ってよい。
 
-**手動実装フロー（影響層1つの場合、またはPhase2が使えない場合）:**
+**手動実装フロー（影響層1つかつ人間が明示承認した場合のみ）:**
 1. 既存コードのパターン・命名・設計を踏襲して実装する
 2. `npm run build` と `npm test` を通す
 3. ブラウザプレビューで実際に動作確認する。riff-gearでの定石:
