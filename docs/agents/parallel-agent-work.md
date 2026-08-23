@@ -104,7 +104,7 @@ clone_sha="$(git -C "$validation_repo" rev-parse HEAD)"
 test "$source_sha" = "$clone_sha"
 test -z "$(git -C "$source_repo" status --porcelain)"
 
-# PATHを差し替える前にCLI実体を解決し、検証用PATHに依存せず同じCLIを起動する。
+# PATHを変更する前にCLI実体を解決し、元のPATHを保持したまま偽コマンドだけ先頭に置く。
 codex_bin="$(command -v codex)"
 test -n "$codex_bin" -a -x "$codex_bin"
 mkdir -p "$probe_dir/bin"
@@ -116,7 +116,7 @@ exit 97
 SH
 chmod +x "$probe_dir/bin/vercel"
 
-PATH="$probe_dir/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+PATH="$probe_dir/bin:$PATH" \
   "$codex_bin" --no-alt-screen -C "$validation_repo" \
   -c 'shell_environment_policy.inherit="all"'
 ```
