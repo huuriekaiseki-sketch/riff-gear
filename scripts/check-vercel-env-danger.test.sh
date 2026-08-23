@@ -1,0 +1,112 @@
+#!/bin/bash
+# WHY: PreToolUse hook(scripts/check-vercel-env-danger.sh)の回帰テスト。
+# bare/package runnerだけでなく、絶対・相対パス経由のvercel env rm/removeも
+# Codexではdeny、Claudeではaskにし、危険時の理由を必ず返すことを確認する。
+# セグメント連結を検知し、安全なコマンドは無出力のままにする。
+#
+# 実行: bash scripts/check-vercel-env-danger.test.sh
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT="$SCRIPT_DIR/check-vercel-env-danger.sh"
+
+fail=0
+assert_eq() {
+  local actual="$1" expected="$2" label="$3"
+  if [ "$actual" = "$expected" ]; then
+    echo "  OK: $label"
+  else
+    echo "  NG: $label (expected=$expected actual=$actual)"
+    fail=1
+  fi
+}
+
+assert_empty() {
+  local actual="$1" label="$2"
+  if [ -z "$actual" ]; then
+    echo "  OK: $label"
+  else
+    echo "  NG: $label (actual=$actual)"
+    fail=1
+  fi
+}
+
+assert_decision_and_reason() {
+  local actual="$1" expected="$2" label="$3"
+  local decision reason
+  decision="$(printf '%s' "$actual" | jq -r '.hookSpecificOutput.permissionDecision // ""')"
+  reason="$(printf '%s' "$actual" | jq -r '.hookSpecificOutput.permissionDecisionReason // ""')"
+  assert_eq "$decision" "$expected" "$label: permissionDecision=$expected"
+  if [ -n "$reason" ]; then
+    echo "  OK: $label: permissionDecisionReasonが非空"
+  else
+    echo "  NG: $label: permissionDecisionReasonが空 (actual=$actual)"
+    fail=1
+  fi
+}
+
+run_hook() {
+  local command="$1" runtime="${2:-codex}"
+  local input
+  input="$(jq -n --arg command "$command" '{tool_name: "Bash", tool_input: {command: $command}}')"
+  set +e
+  OUT="$(printf '%s' "$input" | bash "$SCRIPT" "$runtime")"
+  EXIT_CODE=$?
+  set -e
+}
+
+echo "=== scenario 1: bare vercel env rm → Codex deny + reason ==="
+run_hook "vercel env rm SUPABASE_SERVICE_ROLE_KEY"
+assert_eq "$EXIT_CODE" "0" "exit 0"
+assert_decision_and_reason "$OUT" "deny" "bare rm"
+
+echo "=== scenario 2: bare vercel env remove → Claude ask + reason ==="
+run_hook "vercel env remove SUPABASE_SERVICE_ROLE_KEY" claude
+assert_eq "$EXIT_CODE" "0" "exit 0"
+assert_decision_and_reason "$OUT" "ask" "bare remove"
+
+echo "=== scenario 3: npx vercel env rm → deny + reason ==="
+run_hook "npx vercel env rm SUPABASE_SERVICE_ROLE_KEY"
+assert_eq "$EXIT_CODE" "0" "exit 0"
+assert_decision_and_reason "$OUT" "deny" "npx"
+
+echo "=== scenario 4: pnpm dlx vercel env remove → deny + reason ==="
+run_hook "pnpm dlx vercel env remove SUPABASE_SERVICE_ROLE_KEY"
+assert_eq "$EXIT_CODE" "0" "exit 0"
+assert_decision_and_reason "$OUT" "deny" "pnpm dlx"
+
+echo "=== scenario 5: yarn dlx vercel env rm → deny + reason ==="
+run_hook "yarn dlx vercel env rm SUPABASE_SERVICE_ROLE_KEY"
+assert_eq "$EXIT_CODE" "0" "exit 0"
+assert_decision_and_reason "$OUT" "deny" "yarn dlx"
+
+echo "=== scenario 6: 絶対パスvercel env rm → deny + reason ==="
+run_hook "/usr/local/bin/vercel env rm SUPABASE_SERVICE_ROLE_KEY"
+assert_eq "$EXIT_CODE" "0" "exit 0"
+assert_decision_and_reason "$OUT" "deny" "絶対パス"
+
+echo "=== scenario 7: 相対パスvercel env remove → deny + reason ==="
+run_hook "./node_modules/.bin/vercel env remove SUPABASE_SERVICE_ROLE_KEY"
+assert_eq "$EXIT_CODE" "0" "exit 0"
+assert_decision_and_reason "$OUT" "deny" "相対パス"
+
+echo "=== scenario 8: 連結コマンド内の絶対パスvercel env rm → deny + reason ==="
+run_hook "echo before; /usr/local/bin/vercel env rm SUPABASE_SERVICE_ROLE_KEY"
+assert_eq "$EXIT_CODE" "0" "exit 0"
+assert_decision_and_reason "$OUT" "deny" "連結コマンド"
+
+echo "=== scenario 9: 通常コマンド → 無出力 ==="
+run_hook "npm test"
+assert_eq "$EXIT_CODE" "0" "exit 0"
+assert_empty "$OUT" "安全なコマンドは無出力"
+
+echo "=== scenario 10: vercel env ls → 無出力 ==="
+run_hook "vercel env ls"
+assert_eq "$EXIT_CODE" "0" "exit 0"
+assert_empty "$OUT" "安全なvercelコマンドは無出力"
+
+if [ "$fail" -ne 0 ]; then
+  echo "FAILED"
+  exit 1
+fi
+echo "ALL PASSED"
