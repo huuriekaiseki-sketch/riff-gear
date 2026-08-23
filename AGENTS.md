@@ -16,4 +16,4 @@
 - Codex固有のagent・hook・一時状態は `.codex/` に置き、Claude Code固有の設定は `.claude/` に置く。
 - 互換対応を明示された場合を除き、Codex作業から `.claude/` の設定や状態を変更しない。
 - Claude Code用hookをCodexへ移植するときは設定をコピーするだけで済ませず、Codexの入出力契約で実行テストする。
-- `.codex/hooks.json`を変更したら、Codexで再度hookの内容を確認・信頼し、リポジトリのhookテストを実行する。
+- `.codex/hooks.json`またはblock用hookスクリプトを変更したら、リポジトリの自動hookテストだけで完了扱いにしない。[Codex hookのpush前実機ゲート](docs/agents/parallel-agent-work.md#codex-hookのpush前実機ゲート)に従い、TerminalのCodex CLIで内容を確認・信頼し、危険操作が理由つきでblockされ、偽コマンドの実行痕跡がないことを確認する。
