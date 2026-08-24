@@ -40,6 +40,7 @@ export default async function ProductListPage({
   const { data: userData } = await supabase.auth.getUser()
   const cartQuantityByProductId = new Map<string, number>()
   const favoritedProductIds = new Set<string>()
+  const restockSubscribedProductIds = new Set<string>()
   let isPremiumMember = false
   if (userData.user) {
     const { data: profile } = await supabase
@@ -69,6 +70,15 @@ export default async function ProductListPage({
       .eq('user_id', userData.user.id)
     for (const fav of favorites ?? []) {
       favoritedProductIds.add(fav.product_id)
+    }
+
+    // 再入荷通知の購読状態。売り切れ商品のみ表示するボタンの初期状態に使う
+    const { data: restockSubscriptions } = await supabase
+      .from('restock_subscriptions')
+      .select('product_id')
+      .eq('user_id', userData.user.id)
+    for (const sub of restockSubscriptions ?? []) {
+      restockSubscribedProductIds.add(sub.product_id)
     }
   }
 
@@ -157,6 +167,8 @@ export default async function ProductListPage({
               initialRemaining={remaining}
               isFavorited={userData.user ? favoritedProductIds.has(p.id) : undefined}
               isPremiumMember={isPremiumMember}
+              isLoggedIn={Boolean(userData.user)}
+              isRestockSubscribed={restockSubscribedProductIds.has(p.id)}
             />
           )
         })}

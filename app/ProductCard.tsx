@@ -9,6 +9,7 @@ import { CATEGORY_STYLE, DEFAULT_STYLE } from '@/lib/categories'
 import ReturnWarrantyBadge from './components/ReturnWarrantyBadge'
 import CompareCheckbox from './components/CompareCheckbox'
 import PremiumOnlyBadge from './components/PremiumOnlyBadge'
+import RestockButton from './components/RestockButton'
 
 type Product = {
   id: string
@@ -34,11 +35,15 @@ export default function ProductCard({
   initialRemaining,
   isFavorited,
   isPremiumMember,
+  isLoggedIn,
+  isRestockSubscribed,
 }: {
   product: Product
   initialRemaining: number
   isFavorited?: boolean
   isPremiumMember?: boolean
+  isLoggedIn?: boolean
+  isRestockSubscribed?: boolean
 }) {
   const [remaining, decrementOptimistic] = useOptimistic(
     initialRemaining,
@@ -122,9 +127,14 @@ export default function ProductCard({
         </div>
       </div>
       {remaining <= 0 ? (
-        <span className="mt-4 inline-flex w-fit items-center rounded-full bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-          売り切れ
-        </span>
+        <div className="mt-4">
+          <span className="inline-flex w-fit items-center rounded-full bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+            売り切れ
+          </span>
+          {isLoggedIn && (
+            <RestockButton productId={product.id} initialIsSubscribed={Boolean(isRestockSubscribed)} />
+          )}
+        </div>
       ) : (
         <form action={handleAddToCart} className="mt-4">
           <input type="hidden" name="productId" value={product.id} />
