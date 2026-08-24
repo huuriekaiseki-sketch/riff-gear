@@ -2,24 +2,26 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import ProductCard from './ProductCard'
 import RecentlyViewed from './components/RecentlyViewed'
 import { CATEGORIES, CATEGORY_LABEL } from '@/lib/categories'
+import { SORT_OPTIONS, parseSortParam, applySort, toSalesCountMap, sortByPopularity } from '@/lib/product-sort'
 
-// 商品一覧ページ。カテゴリ→名前順で全商品を取得し、在庫切れ(stock=0)、
-// または既に自分のカートに在庫上限まで入れている場合は
+// 商品一覧ページ。並び替え指定（sort）に応じてカテゴリ→名前順・価格順・
+// 新着順で全商品を取得する。人気順(popular)のみ、注文実績の集計RPCを
+// 取得後にJS側でsales_count降順(同数は名前順)へ並び替える。
+// 在庫切れ(stock=0)、または既に自分のカートに在庫上限まで入れている場合は
 // カート追加ボタンの代わりに「売り切れ」表示に差し替える。
 
 export default async function ProductListPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; category?: string; q?: string }>
+  searchParams: Promise<{ error?: string; category?: string; q?: string; sort?: string }>
 }) {
-  const { error: errorMessage, category, q } = await searchParams
+  const { error: errorMessage, category, q, sort: rawSort } = await searchParams
+  const sort = parseSortParam(rawSort)
   const supabase = await createServerSupabaseClient()
 
   let query = supabase
     .from('products')
-    .select('id, name, category, price_cents, member_price_cents, stock, premium_only')
-    .order('category')
-    .order('name')
+    .select('id, name, category, price_cents, member_price_cents, stock, premium_only, created_at')
 
   // 不正なカテゴリ値が来た場合は無視して全件表示にフォールバックする
   if (category && (CATEGORIES as readonly string[]).includes(category)) {
@@ -29,10 +31,20 @@ export default async function ProductListPage({
     query = query.ilike('name', `%${q}%`)
   }
 
-  const { data: products, error } = await query
+  query = applySort(query, sort)
+
+  const { data: fetchedProducts, error } = await query
 
   if (error) {
     return <p role="alert">商品の取得に失敗しました: {error.message}</p>
+  }
+
+  // 人気順は取得済みデータをJS側で並び替える。RLSの都合上、集計は
+  // security definerのRPC(get_product_sales_counts)経由で行う。
+  let products = fetchedProducts ?? []
+  if (sort === 'popular' && products.length > 0) {
+    const { data: salesCounts } = await supabase.rpc('get_product_sales_counts')
+    products = sortByPopularity(products, toSalesCountMap(salesCounts))
   }
 
   // ログイン中なら、自分のカートに既に入っている数量を商品ごとに取得し、
@@ -111,16 +123,33 @@ export default async function ProductListPage({
           placeholder="商品名で検索"
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-transparent"
         />
+        <label className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+          並び替え
+          <select
+            name="sort"
+            defaultValue={sort}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-transparent"
+          >
+            {SORT_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
         <button
           type="submit"
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700"
         >
-          検索
+          適用
         </button>
       </form>
       <nav className="mb-8 flex flex-wrap gap-2" aria-label="カテゴリ絞り込み">
         <a
-          href={q ? `/?q=${encodeURIComponent(q)}` : '/'}
+          href={`/?${new URLSearchParams({
+            ...(q ? { q } : {}),
+            ...(sort !== 'recommended' ? { sort } : {}),
+          }).toString()}`}
           className={`rounded-full px-4 py-1.5 text-sm ${
             !category
               ? 'bg-foreground text-background'
@@ -130,7 +159,11 @@ export default async function ProductListPage({
           すべて
         </a>
         {CATEGORIES.map((c) => {
-          const href = `/?category=${c}${q ? `&q=${encodeURIComponent(q)}` : ''}`
+          const href = `/?${new URLSearchParams({
+            category: c,
+            ...(q ? { q } : {}),
+            ...(sort !== 'recommended' ? { sort } : {}),
+          }).toString()}`
           return (
             <a
               key={c}
