@@ -45,6 +45,14 @@ export interface SalesSummary {
   averageOrderCents: number
 }
 
+// タイムゾーンに関する既知の仕様(意図的にUTC集計のままにしている):
+// - RPC側のsales_dateはcreated_atのUTC日付(created_at::date)で集計される。
+// - 一方toDailySalesChartData()の日付キーはサーバーのローカルタイムゾーンで生成される。
+// - そのためJST 00:00〜09:00の注文は「UTC上の前日」のバケットに計上され、
+//   日別の見え方が体感とずれることがある(日合計の総和は変わらない)。
+// - JST基準の集計に厳密化する場合はRPC側を (created_at at time zone 'Asia/Tokyo')::date
+//   に変更し、このコメントと合わせて更新すること。
+
 // get_daily_sales()の結果から総売上・総注文数・平均注文額を計算する純関数。
 // 注文が0件の場合、平均注文額は0除算を避けて0にする。
 export function calculateSalesSummary(rows: DailySalesRow[]): SalesSummary {
