@@ -78,9 +78,14 @@ export default async function SiteHeader() {
             </>
           )}
           {isAdmin && (
-            <Link href="/admin/orders" className="transition-colors hover:text-primary">
-              管理者
-            </Link>
+            <>
+              <Link href="/admin/orders" className="transition-colors hover:text-primary">
+                管理者
+              </Link>
+              <Link href="/admin/products" className="transition-colors hover:text-primary">
+                商品管理
+              </Link>
+            </>
           )}
           {!isLoggedIn && (
             <Link
