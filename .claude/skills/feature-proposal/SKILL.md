@@ -103,3 +103,4 @@ Implementerの「動いた」を疑う。まず検証範囲をAskUserQuestionで
 3. `gh pr checks --watch` でCI全通過を確認する
 4. **マージは開発者に確認してから** `gh pr merge`
 5. マージ後: リモートブランチ削除、イシューのクローズ確認、メモリ(`MEMORY.md`)に残すべき決定があれば更新
+6. **学びの置き場判定**: この機能の作業中に発生した障害・CI失敗・レビュー指摘・ハマりを振り返り、それぞれ「どこに留めるか」を1行決める（テスト／スキル・テンプレート／known-failure-patterns.md／implementation-patterns.md／どこにも留めない）。判断基準と選択肢の詳細は[品質ループと昇格基準](../../../docs/agents/quality-loop.md)を正本とする。何も発生しなかった場合はスキップしてよい
