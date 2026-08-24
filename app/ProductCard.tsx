@@ -8,6 +8,7 @@ import FavoriteButton from './favorites/FavoriteButton'
 import { CATEGORY_STYLE, DEFAULT_STYLE } from '@/lib/categories'
 import ReturnWarrantyBadge from './components/ReturnWarrantyBadge'
 import CompareCheckbox from './components/CompareCheckbox'
+import PremiumOnlyBadge from './components/PremiumOnlyBadge'
 
 type Product = {
   id: string
@@ -15,6 +16,8 @@ type Product = {
   category: string
   categoryLabel: string
   price_cents: number
+  memberPriceCents?: number | null
+  premiumOnly?: boolean
 }
 
 type Status = 'idle' | 'pending' | 'done'
@@ -30,10 +33,12 @@ export default function ProductCard({
   product,
   initialRemaining,
   isFavorited,
+  isPremiumMember,
 }: {
   product: Product
   initialRemaining: number
   isFavorited?: boolean
+  isPremiumMember?: boolean
 }) {
   const [remaining, decrementOptimistic] = useOptimistic(
     initialRemaining,
@@ -41,6 +46,7 @@ export default function ProductCard({
   )
   const [status, setStatus] = useState<Status>('idle')
   const style = CATEGORY_STYLE[product.category] ?? DEFAULT_STYLE
+  const showMemberPrice = Boolean(isPremiumMember && product.memberPriceCents != null)
 
   async function handleAddToCart(formData: FormData) {
     decrementOptimistic(1)
@@ -70,19 +76,36 @@ export default function ProductCard({
             </div>
           )}
         </div>
-        <span
-          className={`inline-block rounded-full bg-gradient-to-r px-3 py-1 text-xs font-semibold text-white shadow-sm ${style.gradient}`}
-        >
-          {product.categoryLabel}
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={`inline-block rounded-full bg-gradient-to-r px-3 py-1 text-xs font-semibold text-white shadow-sm ${style.gradient}`}
+          >
+            {product.categoryLabel}
+          </span>
+          {product.premiumOnly && <PremiumOnlyBadge />}
+        </div>
         <h2 className="mt-3 text-lg font-medium text-foreground">
           <Link href={`/products/${product.id}`} className="hover:underline">
             {product.name}
           </Link>
         </h2>
-        <p className="mt-1 text-2xl font-bold tracking-tight text-foreground">
-          ¥{product.price_cents.toLocaleString()}
-        </p>
+        {showMemberPrice ? (
+          <div className="mt-1">
+            <p className="text-sm text-gray-500 line-through dark:text-gray-400">
+              ¥{product.price_cents.toLocaleString()}
+            </p>
+            <p className="flex items-center gap-1.5 text-2xl font-bold tracking-tight text-amber-600 dark:text-amber-400">
+              ¥{product.memberPriceCents!.toLocaleString()}
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                会員価格
+              </span>
+            </p>
+          </div>
+        ) : (
+          <p className="mt-1 text-2xl font-bold tracking-tight text-foreground">
+            ¥{product.price_cents.toLocaleString()}
+          </p>
+        )}
         {remaining > 0 &&
           (remaining <= 3 ? (
             <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-warning/15 px-2.5 py-0.5 text-xs font-semibold text-warning">

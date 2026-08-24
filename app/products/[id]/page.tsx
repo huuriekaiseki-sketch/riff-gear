@@ -7,6 +7,7 @@ import { addToCart } from '@/app/cart/actions'
 import FavoriteButton from '@/app/favorites/FavoriteButton'
 import ReturnWarrantyBadge from '@/app/components/ReturnWarrantyBadge'
 import CompareCheckbox from '@/app/components/CompareCheckbox'
+import PremiumOnlyBadge from '@/app/components/PremiumOnlyBadge'
 import { SPEC_LABEL, formatSpecValue } from '@/lib/spec-labels'
 import RecordView from './RecordView'
 import RelatedProducts from './RelatedProducts'
@@ -33,7 +34,7 @@ export default async function ProductDetailPage({
   // 不正なUUID等でクエリ自体がエラーになった場合も「商品が見つからない」扱いにする
   const { data: product, error } = await supabase
     .from('products')
-    .select('id, name, category, price_cents, stock, specs')
+    .select('id, name, category, price_cents, member_price_cents, stock, specs, premium_only')
     .eq('id', id)
     .maybeSingle()
   if (error || !product) notFound()
@@ -45,8 +46,15 @@ export default async function ProductDetailPage({
   let quantityInCart = 0
   let isFavorited = false
   let hasPurchased = false
+  let isPremiumMember = false
   let myReview: { rating: number; comment: string | null } | null = null
   if (userData.user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('membership')
+      .eq('id', userData.user.id)
+      .maybeSingle()
+    isPremiumMember = profile?.membership === 'premium'
     const { data: purchase } = await supabase
       .from('order_items')
       .select('id, orders!inner(user_id, status)')
@@ -92,11 +100,12 @@ export default async function ProductDetailPage({
 
   const categoryLabel = CATEGORY_LABEL[product.category] ?? product.category
   const style = CATEGORY_STYLE[product.category] ?? DEFAULT_STYLE
+  const showMemberPrice = isPremiumMember && product.member_price_cents != null
 
   // 同カテゴリ・在庫あり・自分自身を除いた商品を関連商品として表示する
   const { data: relatedProducts } = await supabase
     .from('products')
-    .select('id, name, category, price_cents')
+    .select('id, name, category, price_cents, premium_only')
     .eq('category', product.category)
     .neq('id', product.id)
     .gt('stock', 0)
@@ -139,20 +148,37 @@ export default async function ProductDetailPage({
           <div className={`absolute inset-0 bg-gradient-to-t ${style.gradient} opacity-25`} />
         </div>
         <div>
-          <span
-            className={`inline-block rounded-full bg-gradient-to-r px-3 py-1 text-xs font-semibold text-white shadow-sm ${style.gradient}`}
-          >
-            {categoryLabel}
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={`inline-block rounded-full bg-gradient-to-r px-3 py-1 text-xs font-semibold text-white shadow-sm ${style.gradient}`}
+            >
+              {categoryLabel}
+            </span>
+            {product.premium_only && <PremiumOnlyBadge />}
+          </div>
           <div className="mt-4 flex items-start justify-between gap-4">
             <h1 className="text-3xl font-bold tracking-tight text-foreground">{product.name}</h1>
             {userData.user && (
               <FavoriteButton productId={product.id} initialIsFavorited={isFavorited} />
             )}
           </div>
-          <p className="mt-3 text-3xl font-bold tracking-tight text-foreground">
-            ¥{product.price_cents.toLocaleString()}
-          </p>
+          {showMemberPrice ? (
+            <div className="mt-3">
+              <p className="text-base text-gray-500 line-through dark:text-gray-400">
+                ¥{product.price_cents.toLocaleString()}
+              </p>
+              <p className="flex items-center gap-2 text-3xl font-bold tracking-tight text-amber-600 dark:text-amber-400">
+                ¥{product.member_price_cents!.toLocaleString()}
+                <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                  会員価格
+                </span>
+              </p>
+            </div>
+          ) : (
+            <p className="mt-3 text-3xl font-bold tracking-tight text-foreground">
+              ¥{product.price_cents.toLocaleString()}
+            </p>
+          )}
           {count > 0 && (
             <p className="mt-1 flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
               <span className="text-warning">★</span>

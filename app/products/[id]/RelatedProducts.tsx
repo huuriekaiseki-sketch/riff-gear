@@ -1,12 +1,14 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { CATEGORY_LABEL, CATEGORY_STYLE, DEFAULT_STYLE } from '@/lib/categories'
+import PremiumOnlyBadge from '@/app/components/PremiumOnlyBadge'
 
 type RelatedProduct = {
   id: string
   name: string
   category: string
   price_cents: number
+  premium_only?: boolean
 }
 
 // 商品詳細ページ下部の「関連商品」。同カテゴリ・在庫ありの商品を最大4件、
@@ -42,6 +44,11 @@ export default function RelatedProducts({ products }: { products: RelatedProduct
                 <p className="mt-0.5 text-sm font-bold text-foreground">
                   ¥{product.price_cents.toLocaleString()}
                 </p>
+                {product.premium_only && (
+                  <div className="mt-1">
+                    <PremiumOnlyBadge />
+                  </div>
+                )}
               </Link>
             </li>
           )
