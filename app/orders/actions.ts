@@ -8,7 +8,10 @@ import { getOrCreateCartId } from '../cart/actions'
 type ReorderItemRow = {
   product_id: string
   quantity: number
-  products: { name: string; stock: number }
+  // products.premium_only(会員限定商品)のRLSにより、注文時点では見えていた商品でも
+  // 購入後に会員ランクが変わった場合は埋め込みselectがnullを返し得るため、
+  // nullを許容する型にしておく。
+  products: { name: string; stock: number } | null
 }
 
 // 注文と同じ商品・数量をカートに再投入する。在庫（カート内の既存数量を含む）が
@@ -35,6 +38,12 @@ export async function reorderOrder(formData: FormData) {
   const unavailable: string[] = []
 
   for (const item of items ?? []) {
+    // 会員限定商品を非会員が再注文しようとした場合など、RLSでproductsが取得できず
+    // nullになるケースがある。その場合は購入不可として扱う。
+    if (!item.products) {
+      unavailable.push(`商品ID:${item.product_id}（現在ご利用の会員ランクでは購入できません）`)
+      continue
+    }
     const current = quantityInCart.get(item.product_id) ?? 0
     const addable = Math.min(item.quantity, item.products.stock - current)
     if (addable <= 0) {

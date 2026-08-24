@@ -17,7 +17,7 @@ export default async function ProductListPage({
 
   let query = supabase
     .from('products')
-    .select('id, name, category, price_cents, stock')
+    .select('id, name, category, price_cents, stock, premium_only')
     .order('category')
     .order('name')
 
@@ -144,6 +144,7 @@ export default async function ProductListPage({
                 category: p.category,
                 categoryLabel: CATEGORY_LABEL[p.category] ?? p.category,
                 price_cents: p.price_cents,
+                premiumOnly: p.premium_only ?? false,
               }}
               initialRemaining={remaining}
               isFavorited={userData.user ? favoritedProductIds.has(p.id) : undefined}

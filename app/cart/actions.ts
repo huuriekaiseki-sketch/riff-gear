@@ -40,12 +40,18 @@ export async function addToCart(formData: FormData) {
   const supabase = await createServerSupabaseClient()
   const cartId = await getOrCreateCartId(supabase)
 
+  // premium_only商品はRLS(products_select_all)により非会員・未ログインからはselectできず、
+  // 存在しない商品IDと区別できないので0件をmaybeSingleで受け止め、会員限定である可能性を含めた
+  // メッセージにする(single()だと「no rows returned」という生のエラーになってしまうため)。
   const { data: product, error: productError } = await supabase
     .from('products')
     .select('stock')
     .eq('id', productId)
-    .single()
+    .maybeSingle()
   if (productError) throw new Error(productError.message)
+  if (!product) {
+    throw new Error('この商品は購入できません（会員限定商品か、既に取り扱いを終了しています）')
+  }
 
   const { data: existingItem } = await supabase
     .from('cart_items')
@@ -91,7 +97,7 @@ export async function updateCartItemQuantity(formData: FormData) {
     .from('cart_items')
     .select('quantity, product_id, products(stock)')
     .eq('id', itemId)
-    .single<{ quantity: number; product_id: string; products: { stock: number } }>()
+    .single<{ quantity: number; product_id: string; products: { stock: number } | null }>()
   if (itemError) throw new Error(itemError.message)
 
   const nextQuantity = item.quantity + delta
@@ -100,6 +106,12 @@ export async function updateCartItemQuantity(formData: FormData) {
     await supabase.from('cart_items').delete().eq('id', itemId)
     revalidatePath('/cart')
     return
+  }
+
+  // カート追加後に商品が会員限定(premium_only)化された等、RLSでproductsが取得できない
+  // 場合はitem.productsがnullになり得るため、増量は許可せず削除を促す。
+  if (!item.products) {
+    redirect('/cart?error=' + encodeURIComponent('この商品は現在購入できません。カートから削除してください'))
   }
 
   if (nextQuantity > item.products.stock) {

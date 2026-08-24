@@ -7,6 +7,7 @@ import { addToCart } from '@/app/cart/actions'
 import FavoriteButton from '@/app/favorites/FavoriteButton'
 import ReturnWarrantyBadge from '@/app/components/ReturnWarrantyBadge'
 import CompareCheckbox from '@/app/components/CompareCheckbox'
+import PremiumOnlyBadge from '@/app/components/PremiumOnlyBadge'
 import { SPEC_LABEL, formatSpecValue } from '@/lib/spec-labels'
 import RecordView from './RecordView'
 import RelatedProducts from './RelatedProducts'
@@ -33,7 +34,7 @@ export default async function ProductDetailPage({
   // 不正なUUID等でクエリ自体がエラーになった場合も「商品が見つからない」扱いにする
   const { data: product, error } = await supabase
     .from('products')
-    .select('id, name, category, price_cents, stock, specs')
+    .select('id, name, category, price_cents, stock, specs, premium_only')
     .eq('id', id)
     .maybeSingle()
   if (error || !product) notFound()
@@ -96,7 +97,7 @@ export default async function ProductDetailPage({
   // 同カテゴリ・在庫あり・自分自身を除いた商品を関連商品として表示する
   const { data: relatedProducts } = await supabase
     .from('products')
-    .select('id, name, category, price_cents')
+    .select('id, name, category, price_cents, premium_only')
     .eq('category', product.category)
     .neq('id', product.id)
     .gt('stock', 0)
@@ -139,11 +140,14 @@ export default async function ProductDetailPage({
           <div className={`absolute inset-0 bg-gradient-to-t ${style.gradient} opacity-25`} />
         </div>
         <div>
-          <span
-            className={`inline-block rounded-full bg-gradient-to-r px-3 py-1 text-xs font-semibold text-white shadow-sm ${style.gradient}`}
-          >
-            {categoryLabel}
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={`inline-block rounded-full bg-gradient-to-r px-3 py-1 text-xs font-semibold text-white shadow-sm ${style.gradient}`}
+            >
+              {categoryLabel}
+            </span>
+            {product.premium_only && <PremiumOnlyBadge />}
+          </div>
           <div className="mt-4 flex items-start justify-between gap-4">
             <h1 className="text-3xl font-bold tracking-tight text-foreground">{product.name}</h1>
             {userData.user && (

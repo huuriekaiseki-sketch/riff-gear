@@ -8,6 +8,7 @@ import FavoriteButton from './favorites/FavoriteButton'
 import { CATEGORY_STYLE, DEFAULT_STYLE } from '@/lib/categories'
 import ReturnWarrantyBadge from './components/ReturnWarrantyBadge'
 import CompareCheckbox from './components/CompareCheckbox'
+import PremiumOnlyBadge from './components/PremiumOnlyBadge'
 
 type Product = {
   id: string
@@ -15,6 +16,7 @@ type Product = {
   category: string
   categoryLabel: string
   price_cents: number
+  premiumOnly?: boolean
 }
 
 type Status = 'idle' | 'pending' | 'done'
@@ -70,11 +72,14 @@ export default function ProductCard({
             </div>
           )}
         </div>
-        <span
-          className={`inline-block rounded-full bg-gradient-to-r px-3 py-1 text-xs font-semibold text-white shadow-sm ${style.gradient}`}
-        >
-          {product.categoryLabel}
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={`inline-block rounded-full bg-gradient-to-r px-3 py-1 text-xs font-semibold text-white shadow-sm ${style.gradient}`}
+          >
+            {product.categoryLabel}
+          </span>
+          {product.premiumOnly && <PremiumOnlyBadge />}
+        </div>
         <h2 className="mt-3 text-lg font-medium text-foreground">
           <Link href={`/products/${product.id}`} className="hover:underline">
             {product.name}
