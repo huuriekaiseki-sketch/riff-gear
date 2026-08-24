@@ -17,7 +17,7 @@ export default async function ProductListPage({
 
   let query = supabase
     .from('products')
-    .select('id, name, category, price_cents, stock')
+    .select('id, name, category, price_cents, member_price_cents, stock, premium_only')
     .order('category')
     .order('name')
 
@@ -40,7 +40,14 @@ export default async function ProductListPage({
   const { data: userData } = await supabase.auth.getUser()
   const cartQuantityByProductId = new Map<string, number>()
   const favoritedProductIds = new Set<string>()
+  let isPremiumMember = false
   if (userData.user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('membership')
+      .eq('id', userData.user.id)
+      .maybeSingle()
+    isPremiumMember = profile?.membership === 'premium'
     const { data: cart } = await supabase
       .from('carts')
       .select('id')
@@ -144,9 +151,12 @@ export default async function ProductListPage({
                 category: p.category,
                 categoryLabel: CATEGORY_LABEL[p.category] ?? p.category,
                 price_cents: p.price_cents,
+                memberPriceCents: p.member_price_cents ?? null,
+                premiumOnly: p.premium_only ?? false,
               }}
               initialRemaining={remaining}
               isFavorited={userData.user ? favoritedProductIds.has(p.id) : undefined}
+              isPremiumMember={isPremiumMember}
             />
           )
         })}
