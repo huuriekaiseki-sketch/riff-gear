@@ -39,6 +39,16 @@ export default async function FavoritesPage() {
 
   const products = (favorites ?? []).map((f) => f.products).filter((p): p is NonNullable<typeof p> => p !== null)
 
+  // 再入荷通知の購読状態。売り切れ商品のみ表示するボタンの初期状態に使う
+  const restockSubscribedProductIds = new Set<string>()
+  const { data: restockSubscriptions } = await supabase
+    .from('restock_subscriptions')
+    .select('product_id')
+    .eq('user_id', userData.user.id)
+  for (const sub of restockSubscriptions ?? []) {
+    restockSubscribedProductIds.add(sub.product_id)
+  }
+
   return (
     <main>
       <h1 className="text-2xl font-semibold tracking-tight text-foreground">お気に入り</h1>
@@ -68,6 +78,8 @@ export default async function FavoritesPage() {
                 }}
                 initialRemaining={remaining}
                 isFavorited
+                isLoggedIn
+                isRestockSubscribed={restockSubscribedProductIds.has(p.id)}
               />
             )
           })}

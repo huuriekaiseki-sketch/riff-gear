@@ -17,6 +17,7 @@ export default async function SiteHeader() {
 
   let displayName: string | null = null
   let cartItems: { id: string; name: string; quantity: number }[] = []
+  let unreadRestockCount = 0
   if (isLoggedIn) {
     const { data: profile } = await supabase
       .from('profiles')
@@ -43,6 +44,14 @@ export default async function SiteHeader() {
         name: Array.isArray(item.products) ? item.products[0]?.name ?? '' : item.products.name,
       }))
     }
+
+    // 再入荷通知の未読件数。0件ならバッジは出さずリンクのみ表示する
+    const { count } = await supabase
+      .from('restock_notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userData.user!.id)
+      .is('read_at', null)
+    unreadRestockCount = count ?? 0
   }
   const cartTotalCount = cartItems.reduce((sum, item) => sum + item.quantity, 0)
 
@@ -67,6 +76,14 @@ export default async function SiteHeader() {
             <>
               <Link href="/favorites" className="transition-colors hover:text-primary">
                 お気に入り
+              </Link>
+              <Link href="/notifications" className="relative transition-colors hover:text-primary">
+                お知らせ
+                {unreadRestockCount > 0 && (
+                  <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1.5 text-xs font-semibold text-white">
+                    {unreadRestockCount}
+                  </span>
+                )}
               </Link>
               <CartNavLink items={cartItems} totalCount={cartTotalCount} />
               <Link href="/orders" className="transition-colors hover:text-primary">
