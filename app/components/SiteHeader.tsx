@@ -72,6 +72,9 @@ export default async function SiteHeader() {
           <Link href="/" className="transition-colors hover:text-primary">
             商品一覧
           </Link>
+          <Link href="/quiz" className="transition-colors hover:text-primary">
+            機材診断
+          </Link>
           {isLoggedIn && (
             <>
               <Link href="/favorites" className="transition-colors hover:text-primary">
