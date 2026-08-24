@@ -14,8 +14,10 @@ import RelatedProducts from './RelatedProducts'
 import ReviewForm from '@/app/reviews/ReviewForm'
 import ReviewList from '@/app/reviews/ReviewList'
 import { summarizeRatings } from '@/lib/reviews'
+import { pickTopCoPurchasedIds, type CoPurchasedProduct } from '@/lib/co-purchase'
 
 const RELATED_LIMIT = 4
+const CO_PURCHASED_LIMIT = 4
 
 // 商品詳細ページ。一覧と同じく「在庫 − 自分のカート内数量」を実質の残数として
 // 扱い、残数0なら売り切れ表示に差し替える。閲覧はRecordView(クライアント)経由で
@@ -111,6 +113,37 @@ export default async function ProductDetailPage({
     .gt('stock', 0)
     .order('name')
     .limit(RELATED_LIMIT)
+
+  // 「一緒に購入されている商品」(Issue #78)。get_co_purchased_products RPCで
+  // 共起回数を集計し、上位IDだけをJS側で選んでからproductsを再フェッチする。
+  // 在庫あり(stock > 0)のみに絞り、会員限定商品はproducts側のRLS(0018)により
+  // 非会員には自動的に返らない(ここで明示的な絞り込みは不要)。
+  const { data: coPurchaseRows } = await supabase.rpc('get_co_purchased_products', {
+    target_product_id: product.id,
+  })
+  const coPurchasedIds = pickTopCoPurchasedIds(
+    coPurchaseRows as CoPurchasedProduct[] | null,
+    CO_PURCHASED_LIMIT,
+  )
+  let coPurchasedProducts: {
+    id: string
+    name: string
+    category: string
+    price_cents: number
+    premium_only?: boolean
+  }[] = []
+  if (coPurchasedIds.length > 0) {
+    const { data: coPurchasedRaw } = await supabase
+      .from('products')
+      .select('id, name, category, price_cents, premium_only')
+      .in('id', coPurchasedIds)
+      .gt('stock', 0)
+    // フェッチ結果はin()の順序を保証しないため、共起回数の順序(coPurchasedIds)に
+    // 合わせて並べ直す。RLSで落ちた行はfindでundefinedになりfilterで除外される。
+    coPurchasedProducts = coPurchasedIds
+      .map((id) => coPurchasedRaw?.find((p) => p.id === id))
+      .filter((p): p is NonNullable<typeof p> => p != null)
+  }
 
   const { data: reviews } = await supabase
     .from('reviews')
@@ -226,6 +259,12 @@ export default async function ProductDetailPage({
           </div>
         </div>
       </div>
+      {coPurchasedProducts.length > 0 && (
+        <RelatedProducts
+          heading="この商品を買った人はこんな商品も買っています"
+          products={coPurchasedProducts}
+        />
+      )}
       <RelatedProducts products={relatedProducts ?? []} />
       <section className="mt-12">
         <h2 className="text-xl font-semibold tracking-tight text-foreground">レビュー</h2>
