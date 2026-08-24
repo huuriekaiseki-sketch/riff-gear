@@ -13,7 +13,7 @@ import RecordView from './RecordView'
 import RelatedProducts from './RelatedProducts'
 import ReviewForm from '@/app/reviews/ReviewForm'
 import ReviewList from '@/app/reviews/ReviewList'
-import { summarizeRatings } from '@/lib/reviews'
+import { summarizeRatings, countVotesByReviewId, sortReviewsByHelpfulness } from '@/lib/reviews'
 import { pickTopCoPurchasedIds, type CoPurchasedProduct } from '@/lib/co-purchase'
 
 const RELATED_LIMIT = 4
@@ -145,12 +145,27 @@ export default async function ProductDetailPage({
       .filter((p): p is NonNullable<typeof p> => p != null)
   }
 
-  const { data: reviews } = await supabase
+  const { data: reviewsRaw } = await supabase
     .from('reviews')
     .select('id, rating, comment, created_at, user_id')
     .eq('product_id', product.id)
     .order('created_at', { ascending: false })
-  const { average, count } = summarizeRatings((reviews ?? []).map((r) => r.rating))
+  const { average, count } = summarizeRatings((reviewsRaw ?? []).map((r) => r.rating))
+
+  // 「参考になった」投票は未ログインにも件数を見せるため、reviewsとは別クエリで
+  // 全投票行を取得する(RLSのselectはanonにも許可されている想定)。
+  // 表示順は投票数降順・同数は新しい順に並べ替える。
+  const reviewIds = (reviewsRaw ?? []).map((r) => r.id)
+  const { data: helpfulVotes } =
+    reviewIds.length > 0
+      ? await supabase.from('review_helpful_votes').select('review_id, user_id').in('review_id', reviewIds)
+      : { data: [] as { review_id: string; user_id: string }[] }
+  const helpfulCountByReviewIdMap = countVotesByReviewId(helpfulVotes ?? [])
+  const reviews = sortReviewsByHelpfulness(reviewsRaw ?? [], helpfulCountByReviewIdMap)
+  const helpfulCountByReviewId = Object.fromEntries(helpfulCountByReviewIdMap)
+  const votedReviewIds = (helpfulVotes ?? [])
+    .filter((v) => v.user_id === userData.user?.id)
+    .map((v) => v.review_id)
 
   return (
     <main>
@@ -273,7 +288,13 @@ export default async function ProductDetailPage({
             {reviewError}
           </p>
         )}
-        <ReviewList productId={product.id} reviews={reviews ?? []} currentUserId={userData.user?.id} />
+        <ReviewList
+          productId={product.id}
+          reviews={reviews}
+          currentUserId={userData.user?.id}
+          helpfulCountByReviewId={helpfulCountByReviewId}
+          votedReviewIds={votedReviewIds}
+        />
         {hasPurchased && (
           <ReviewForm
             productId={product.id}
