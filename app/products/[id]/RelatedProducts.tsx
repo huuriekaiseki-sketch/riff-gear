@@ -14,12 +14,21 @@ type RelatedProduct = {
 // 商品詳細ページ下部の「関連商品」。同カテゴリ・在庫ありの商品を最大4件、
 // サーバーコンポーネントとして描画する(閲覧履歴と違いDBから取得できるため
 // クライアント側の状態管理は不要)。
-export default function RelatedProducts({ products }: { products: RelatedProduct[] }) {
+// heading/aria-labelをprop化しているのは、Issue #78の「一緒に購入されている商品」
+// レコメンドでも同じ見た目のグリッドを再利用したいため。デフォルト値を既存の
+// 見出し文言にしているので、既存の呼び出し側(引数なし)は無変更で動く。
+export default function RelatedProducts({
+  products,
+  heading = 'この商品を見た人はこちらも見ています',
+}: {
+  products: RelatedProduct[]
+  heading?: string
+}) {
   if (products.length === 0) return null
 
   return (
-    <section aria-label="関連商品" className="mt-12">
-      <h2 className="mb-4 text-lg font-semibold text-foreground">この商品を見た人はこちらも見ています</h2>
+    <section aria-label={heading} className="mt-12">
+      <h2 className="mb-4 text-lg font-semibold text-foreground">{heading}</h2>
       <ul className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {products.map((product) => {
           const style = CATEGORY_STYLE[product.category] ?? DEFAULT_STYLE
