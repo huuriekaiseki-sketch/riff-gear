@@ -51,3 +51,30 @@ export async function deleteReview(formData: FormData) {
   await supabase.from('reviews').delete().eq('id', reviewId)
   revalidatePath(`/products/${productId}`)
 }
+
+// レビューへの「参考になった」投票をトグルする。既に自分の投票があれば取り消し(delete)、
+// 無ければ新規投票(insert)する。購入者限定にはせずログイン済みなら誰でも投票可能で、
+// 1ユーザー1レビュー1票の制約はDB側のunique(user_id, review_id)とRLSに委ねる。
+export async function toggleHelpfulVote(formData: FormData) {
+  const reviewId = formData.get('reviewId') as string
+  const productId = formData.get('productId') as string
+
+  const supabase = await createServerSupabaseClient()
+  const { data: userData } = await supabase.auth.getUser()
+  if (!userData.user) throw new Error('ログインが必要です')
+
+  const { data: existing } = await supabase
+    .from('review_helpful_votes')
+    .select('id')
+    .eq('user_id', userData.user.id)
+    .eq('review_id', reviewId)
+    .maybeSingle()
+
+  if (existing) {
+    await supabase.from('review_helpful_votes').delete().eq('id', existing.id)
+  } else {
+    await supabase.from('review_helpful_votes').insert({ user_id: userData.user.id, review_id: reviewId })
+  }
+
+  revalidatePath(`/products/${productId}`)
+}
