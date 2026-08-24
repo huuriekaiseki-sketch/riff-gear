@@ -39,3 +39,12 @@ create policy "products_select_all" on products
   for select using (
     not premium_only or is_premium() or is_admin()
   );
+
+-- ROLLBACK:
+-- drop policy "products_select_all" on products;
+-- create policy "products_select_all" on products
+--   for select using (true);
+-- revoke execute on function is_premium() from anon, authenticated, service_role;
+-- drop function is_premium();
+-- alter table products drop column premium_only;
+-- alter table profiles drop column membership;
