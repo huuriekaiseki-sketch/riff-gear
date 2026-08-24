@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import ProductCard from './ProductCard'
 import RecentlyViewed from './components/RecentlyViewed'
@@ -109,6 +110,15 @@ export default async function ProductListPage({
           {products?.length ?? 0}件表示中
         </p>
       </div>
+      <Link
+        href="/quiz"
+        className="mb-8 flex items-center justify-between rounded-2xl border border-gray-200/60 bg-surface px-5 py-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md dark:border-gray-800/60"
+      >
+        <span className="text-sm font-medium text-foreground">
+          どれを選べばいいか迷ったら → <span className="text-primary">ぴったり機材診断</span>
+        </span>
+        <span aria-hidden className="text-primary">→</span>
+      </Link>
       {errorMessage && (
         <p role="alert" className="mb-6 rounded-lg bg-danger/10 px-4 py-3 text-sm text-danger">
           {errorMessage}
