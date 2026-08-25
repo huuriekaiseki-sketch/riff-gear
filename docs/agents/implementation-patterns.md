@@ -36,3 +36,25 @@ riff-gearで一度確立した「毎回同じ形で実装できる」パター�
 
 6. **マージ後の確認**
    Vercelダッシュボード → Deployments → Cron Jobsタブで、スケジュール通り登録・発火しているか確認する。
+
+## Markdownのみの変更でCIの重いジョブをスキップする
+
+「Actions分数は節約したいが、CIを回す頻度は減らしたくない」場合のパターン。削るのは実行回数ではなく、1回あたりの無駄。参考実装: [PR #95](https://github.com/huuriekaiseki-sketch/riff-gear/pull/95)。
+
+1. **`changes`ジョブで変更ファイルを判定する**
+   - `github.event.pull_request.base.sha` と `head.sha` の差分を取り、`.md`以外が1件でもあれば `code=true` を `$GITHUB_OUTPUT` に出す
+   - `actions/checkout` には `fetch-depth: 0` が必要。浅いcloneだとbase.shaが履歴に無く差分が取れない
+   - `pull_request` 以外のイベント（push・workflow_dispatch）では無条件に `code=true` にする
+   - 変更ファイルが空のときも `code=true` に倒す（安全側。CIが走らないより走る方がまし）
+
+2. **重いジョブに `needs: changes` と `if: needs.changes.outputs.code == 'true'` を付ける**
+   再利用ワークフロー（`uses:` で呼ぶジョブ）にも `needs`・`if` は付けられる。
+
+3. **スキップ対象から外すジョブを必ず検討する**
+   riff-gearでは `hooks-test` を常時実行にした。`scripts/codex-aidd-port.test.sh` が `.agents/skills/feature-proposal/SKILL.md` という**.mdファイルを検証している**ため、一律スキップするとその検証まで飛んでしまう。
+   判断手順: `grep -rn "\.mdx\?[\"']" scripts tests` 等で「.mdを読んで検証しているテストが無いか」を先に確認する。
+
+4. **ブランチ保護のrequired checksを確認する**
+   `gh api repos/<owner>/<repo>/branches/main/protection` が404なら未設定でこの方式が使える。設定済みの場合、スキップされたチェックを待ち続けてマージできなくなるため、`changes` ジョブ自体を必須チェックにする等の別方式が要る。
+
+効果: docsのみのPRで約4分 → 10秒台（`changes` ジョブのオーバーヘッドは実測4秒）。
