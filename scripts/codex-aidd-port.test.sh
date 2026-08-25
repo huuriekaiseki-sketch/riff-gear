@@ -5,6 +5,8 @@ ROOT="$(git rev-parse --show-toplevel)"
 HOOKS_FILE="$ROOT/.codex/hooks.json"
 CLAUDE_SETTINGS_FILE="$ROOT/.claude/settings.json"
 SKILL_FILE="$ROOT/.agents/skills/feature-proposal/SKILL.md"
+QUALITY_LOOP_FILE="$ROOT/docs/agents/quality-loop.md"
+PR_TEMPLATE_FILE="$ROOT/.github/PULL_REQUEST_TEMPLATE.md"
 
 fail() {
   printf 'FAIL: %s\n' "$1" >&2
@@ -13,12 +15,33 @@ fail() {
 
 [[ -f "$HOOKS_FILE" ]] || fail ".codex/hooks.json が存在しません"
 [[ -f "$SKILL_FILE" ]] || fail "feature-proposal skill が存在しません"
+[[ -f "$QUALITY_LOOP_FILE" ]] || fail "品質ループの正本が存在しません"
+[[ -f "$PR_TEMPLATE_FILE" ]] || fail "PRテンプレートの正本が存在しません"
 
-if rg -n 'CLAUDE_PROJECT_DIR' "$HOOKS_FILE"; then
+grep -Fq 'tests/rls/' "$SKILL_FILE" \
+  && grep -Fq 'tests/rpc/' "$SKILL_FILE" \
+  && grep -Fq '完了条件' "$SKILL_FILE" \
+  || fail "Codex skill にRLS/認可シナリオの自動テスト化完了条件がありません"
+
+grep -Fq '.github/PULL_REQUEST_TEMPLATE.md' "$SKILL_FILE" \
+  && grep -Fq '変更した層' "$SKILL_FILE" \
+  && grep -Fq '実施した検証' "$SKILL_FILE" \
+  && grep -Fq '残る仕様上の制約' "$SKILL_FILE" \
+  || fail "Codex skill にPRテンプレート3欄の必須ルールがありません"
+
+grep -Fq '.claude/skills/feature-proposal/SKILL.md' "$PR_TEMPLATE_FILE" \
+  && grep -Fq '.agents/skills/feature-proposal/SKILL.md' "$PR_TEMPLATE_FILE" \
+  || fail "PRテンプレートがClaude版とCodex版の両方を参照していません"
+
+grep -Fq '学びの置き場判定' "$SKILL_FILE" \
+  && grep -Fq 'docs/agents/quality-loop.md' "$SKILL_FILE" \
+  || fail "Codex skill に品質ループを正本とする学びの置き場判定がありません"
+
+if grep -n 'CLAUDE_PROJECT_DIR' "$HOOKS_FILE"; then
   fail "Codex hook が Claude Code 専用の CLAUDE_PROJECT_DIR に依存しています"
 fi
 
-if rg -n '\.Codex/workflows|`Workflow`ツール|scriptPath:' "$SKILL_FILE"; then
+if grep -n '\.Codex/workflows|`Workflow`ツール|scriptPath:' "$SKILL_FILE"; then
   fail "Codex skill が存在しない Workflow ツールまたは workflow パスを参照しています"
 fi
 
