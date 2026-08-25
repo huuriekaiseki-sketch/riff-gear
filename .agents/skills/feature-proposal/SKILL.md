@@ -120,7 +120,13 @@ Sweeper・Finderの結果を踏まえ、実装方針を開発者に確認し、�
 
 ### Role 5: Critic（検証・批判）
 
-Implementerの「動いた」を疑う。チェックリスト:
+Implementerの「動いた」を疑う。この判定は機能（PR）単位で1回だけ行う。
+
+RLSポリシー・認可（auth）ロジックの変更を含む場合は、anon・authenticated・service_roleでAPI／RLSを直接検証する。さらに、直接検証したシナリオを`tests/rls/`または`tests/rpc/`の自動テストとして追加するまでを完了条件とする。この基準の正本は`docs/agents/quality-loop.md`とする。
+
+実施した検証は「E2E／API直叩き／RLS・認可直叩き／Fault Injection／復旧手順」ごとに`完了／一部完了／未実施／対象外`の4値で記録する。`未実施`・`対象外`には理由を付け、Role 6のPR本文へ引き継ぐ。
+
+基本チェックリスト:
 
 - [ ] 一時デバッグ出力(`console.log`等)を削除したか（`git diff`で確認）
 - [ ] テストデータ（在庫数・テスト注文・テストユーザー）を元に戻したか
@@ -131,7 +137,8 @@ Implementerの「動いた」を疑う。チェックリスト:
 ### Role 6: Closer（完了処理）
 
 1. 変更ファイルを個別に `git add`（`git add -A` は使わない）してコミット。イシューがあればコミットメッセージまたはPR本文に `closes #N` を入れる
-2. push → `gh pr create`（Test planに実際にやった検証を書く）
+2. push → `gh pr create`。`.github/PULL_REQUEST_TEMPLATE.md`を正本とし、3欄（変更した層／実施した検証／残る仕様上の制約）を必ず全て埋める。制約が無ければ`なし（確認済み）`と明記する
 3. `gh pr checks --watch` でCI全通過を確認する
 4. **マージは開発者に確認してから** `gh pr merge`
 5. マージ後: リモートブランチ削除、イシューのクローズ確認、メモリ(`MEMORY.md`)に残すべき決定があれば更新
+6. **学びの置き場判定**: 作業中に発生した障害・CI失敗・レビュー指摘・ハマりごとに、テスト／スキル・テンプレート／`docs/agents/known-failure-patterns.md`／`docs/agents/implementation-patterns.md`／どこにも留めない、のどこへ残すかを1行決める。判断基準の正本は`docs/agents/quality-loop.md`とし、何も発生しなかった場合はスキップしてよい

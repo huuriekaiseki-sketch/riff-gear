@@ -1,7 +1,8 @@
 <!--
 このテンプレートの目的: 何を確認し、何を確認できず、何を既知の制約として
 受け入れたかをPR単体で復元できるようにする（人間・Claude・Codex共通の型）。
-3欄すべて必須。詳細な運用ルールは .claude/skills/feature-proposal/SKILL.md のRole 5/6を参照。
+3欄すべて必須。詳細な運用ルールは .claude/skills/feature-proposal/SKILL.md（Claude）または
+.agents/skills/feature-proposal/SKILL.md（Codex）のRole 5/6を参照。
 -->
 
 ## 概要
