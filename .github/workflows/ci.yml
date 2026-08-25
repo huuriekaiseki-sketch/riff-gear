@@ -14,6 +14,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # WHY: Markdownのみの変更(docs・skill・PRテンプレート)では build/lint/typecheck/test の
+  # 結果が変わらないのに、testジョブだけで毎回2分40秒(ローカルSupabase起動込み)かかる。
+  # 2026-08-25にActions無料枠(private 2,000分/月)を使い切りCIが全停止した実例があり、
+  # 消費の一因がこれだった(issue #94)。ここで変更ファイルを判定し、重いジョブだけ落とす。
+  # hooks-testは対象外(常に実行)にしている。scripts/codex-aidd-port.test.shが
+  # .agents/skills/feature-proposal/SKILL.md を検証しており、これは.mdファイルのため
+  # 一律スキップすると検証まで飛んでしまうため。
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: filter
+        name: Detect non-markdown changes
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed="$(git diff --name-only '${{ github.event.pull_request.base.sha }}' '${{ github.event.pull_request.head.sha }}')"
+          echo "changed files:"
+          echo "$changed"
+          # 1件でも.md以外が含まれていれば重いジョブを実行する。
+          # 変更ファイルが空のときもgrep -vが空行にマッチしてcode=trueになる(安全側)。
+          if echo "$changed" | grep -qv '\.md$'; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          fi
+
   hooks-test:
     runs-on: ubuntu-latest
     steps:
@@ -31,21 +64,29 @@ jobs:
           done
 
   typecheck:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     uses: ./.github/workflows/node-check.yml
     with:
       run-script: typecheck
 
   lint:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     uses: ./.github/workflows/node-check.yml
     with:
       run-script: lint
 
   build:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     uses: ./.github/workflows/node-check.yml
     with:
       run-script: build
 
   test:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
