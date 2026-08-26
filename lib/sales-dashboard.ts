@@ -45,6 +45,40 @@ export interface SalesSummary {
   averageOrderCents: number
 }
 
+// page.tsx側の「管理者チェック→RPCエラー時→成功時」の分岐を純関数として切り出したもの。
+// Server Componentは(RTL等の追加ツール無しでは)直接レンダーテストしにくいため、
+// 分岐ロジックだけをここに抜き出しvitestで直接検証できるようにしている
+// (calculateSalesSummary等と同じ「ロジックをlib/の純関数に切り出す」パターン)。
+// 目的: RPCがエラーを返したとき、誤って「売上0円」を表示してしまわないことを保証する
+// (dailySales ?? [] のような安全なデフォルト値処理がエラー時に素通りしてしまうバグを防ぐ)。
+export type DashboardViewState =
+  | { status: 'forbidden' }
+  | { status: 'error'; message: string }
+  | { status: 'ok'; dailySales: DailySalesRow[]; productSales: ProductSalesSummaryRow[] }
+
+export function resolveDashboardViewState(params: {
+  isAdmin: boolean
+  dailySales: DailySalesRow[] | null
+  dailySalesError: { message: string } | null
+  productSales: ProductSalesSummaryRow[] | null
+  productSalesError: { message: string } | null
+}): DashboardViewState {
+  if (!params.isAdmin) {
+    return { status: 'forbidden' }
+  }
+  if (params.dailySalesError || params.productSalesError) {
+    return {
+      status: 'error',
+      message: params.dailySalesError?.message ?? params.productSalesError?.message ?? '不明なエラーが発生しました',
+    }
+  }
+  return {
+    status: 'ok',
+    dailySales: params.dailySales ?? [],
+    productSales: params.productSales ?? [],
+  }
+}
+
 // タイムゾーンに関する既知の仕様(意図的にUTC集計のままにしている):
 // - RPC側のsales_dateはcreated_atのUTC日付(created_at::date)で集計される。
 // - 一方toDailySalesChartData()の日付キーはサーバーのローカルタイムゾーンで生成される。

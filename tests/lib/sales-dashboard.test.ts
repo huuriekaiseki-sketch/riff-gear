@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   calculateSalesSummary,
+  resolveDashboardViewState,
   toDailySalesChartData,
   sortProductSalesByRevenue,
   type DailySalesRow,
@@ -87,6 +88,72 @@ describe('toDailySalesChartData', () => {
     const result = toDailySalesChartData(rows, 3, new Date('2026-08-25T12:00:00+09:00'))
     expect(result.map((r) => r.date)).toEqual(['2026-08-23', '2026-08-24', '2026-08-25'])
     expect(result.every((r) => r.totalCents === 0)).toBe(true)
+  })
+})
+
+describe('resolveDashboardViewState', () => {
+  const okParams = {
+    isAdmin: true,
+    dailySales: [{ sales_date: '2026-08-25', total_cents: 1_000, order_count: 1 }] as DailySalesRow[],
+    dailySalesError: null,
+    productSales: [
+      { product_id: 'a', product_name: '商品A', sales_count: 1, total_cents: 1_000 },
+    ] as ProductSalesSummaryRow[],
+    productSalesError: null,
+  }
+
+  it('管理者でなければ forbidden になる(RPCの結果は無視される)', () => {
+    const result = resolveDashboardViewState({ ...okParams, isAdmin: false })
+    expect(result).toEqual({ status: 'forbidden' })
+  })
+
+  it('管理者だがget_daily_salesが失敗した場合、0円表示にせずerrorになる', () => {
+    const result = resolveDashboardViewState({
+      ...okParams,
+      dailySales: null,
+      dailySalesError: { message: 'permission denied: admin only' },
+    })
+    expect(result).toEqual({ status: 'error', message: 'permission denied: admin only' })
+  })
+
+  it('管理者だがget_product_sales_summaryが失敗した場合もerrorになる', () => {
+    const result = resolveDashboardViewState({
+      ...okParams,
+      productSales: null,
+      productSalesError: { message: 'DB接続エラー' },
+    })
+    expect(result).toEqual({ status: 'error', message: 'DB接続エラー' })
+  })
+
+  it('両方失敗した場合はget_daily_sales側のエラーメッセージを優先する', () => {
+    const result = resolveDashboardViewState({
+      ...okParams,
+      dailySales: null,
+      dailySalesError: { message: 'daily側のエラー' },
+      productSales: null,
+      productSalesError: { message: 'summary側のエラー' },
+    })
+    expect(result).toEqual({ status: 'error', message: 'daily側のエラー' })
+  })
+
+  it('管理者で両RPCとも成功した場合、データがそのままokとして返る', () => {
+    const result = resolveDashboardViewState(okParams)
+    expect(result).toEqual({
+      status: 'ok',
+      dailySales: okParams.dailySales,
+      productSales: okParams.productSales,
+    })
+  })
+
+  it('RPCがnullを返した場合(データ0件)は空配列にフォールバックする', () => {
+    const result = resolveDashboardViewState({
+      isAdmin: true,
+      dailySales: null,
+      dailySalesError: null,
+      productSales: null,
+      productSalesError: null,
+    })
+    expect(result).toEqual({ status: 'ok', dailySales: [], productSales: [] })
   })
 })
 
