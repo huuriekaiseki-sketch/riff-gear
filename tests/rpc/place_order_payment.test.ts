@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { createTestUser, deleteTestUser, type TestUser } from '../helpers/test-users'
+import { createDummyProduct, cleanupTestData } from '../helpers/test-fixtures'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 // place_order() の支払い方法(payment_method)引数と、それに応じたpayment_statusの初期値を検証する。
@@ -11,35 +12,11 @@ describe('place_order の支払い方法とpayment_status', () => {
 
   beforeAll(async () => {
     user = await createTestUser('customer')
-
-    const adminClient = createAdminClient()
-    const { data: product, error } = await adminClient
-      .from('products')
-      .insert({
-        name: '決済テスト用ダミー商品',
-        category: 'accessory',
-        price_cents: 1000,
-        stock: 10,
-      })
-      .select('id')
-      .single()
-    expect(error).toBeNull()
-    productId = product!.id
+    productId = await createDummyProduct({ name: '決済テスト用ダミー商品', stock: 10 })
   })
 
   afterAll(async () => {
-    const adminClient = createAdminClient()
-
-    const { data: orders } = await adminClient.from('orders').select('id').eq('user_id', user.id)
-    if (orders && orders.length > 0) {
-      await adminClient
-        .from('orders')
-        .delete()
-        .in('id', orders.map((o) => o.id))
-    }
-    await adminClient.from('cart_items').delete().eq('product_id', productId)
-    await adminClient.from('products').delete().eq('id', productId)
-
+    await cleanupTestData({ userIds: [user.id], productIds: [productId] })
     await deleteTestUser(user.id)
   })
 

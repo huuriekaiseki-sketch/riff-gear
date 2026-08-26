@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { createClient } from '@supabase/supabase-js'
 import { createTestUser, deleteTestUser, type TestUser } from '../helpers/test-users'
+import { createDummyProduct, cleanupTestData } from '../helpers/test-fixtures'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 // review_helpful_votes(0024)のRLS回帰テスト。
@@ -22,19 +23,9 @@ describe('review_helpful_votes RLS', () => {
     // 投票対象のレビューを用意する。レビューのinsertは購入者限定RLSがあるため、
     // 注文まで作ると準備が重い。ここでの検証対象は投票テーブルのRLSなので、
     // レビュー自体はservice role(RLSバイパス)で直接作成する。
-    const adminClient = createAdminClient()
-    const { data: product } = await adminClient
-      .from('products')
-      .insert({
-        name: 'review-helpful-votes.test.ts専用ダミー商品',
-        category: 'accessory',
-        price_cents: 1000,
-        stock: 5,
-      })
-      .select('id')
-      .single()
-    productId = product!.id
+    productId = await createDummyProduct({ name: 'review-helpful-votes.test.ts専用ダミー商品' })
 
+    const adminClient = createAdminClient()
     const { data: review, error: reviewError } = await adminClient
       .from('reviews')
       .insert({ user_id: userA.id, product_id: productId, rating: 5, comment: '投票テスト用' })
@@ -47,9 +38,8 @@ describe('review_helpful_votes RLS', () => {
   })
 
   afterAll(async () => {
-    const adminClient = createAdminClient()
     // review_helpful_votes・reviewsはそれぞれ親(reviews/products)へのon delete cascadeで消える
-    await adminClient.from('products').delete().eq('id', productId)
+    await cleanupTestData({ productIds: [productId] })
     await deleteTestUser(userA.id)
     await deleteTestUser(userB.id)
   })

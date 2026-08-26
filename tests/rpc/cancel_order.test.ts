@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { createTestUser, deleteTestUser, type TestUser } from '../helpers/test-users'
+import { createDummyProduct, cleanupTestData } from '../helpers/test-fixtures'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 // cancel_order() RPCの検証。receivedステータスの自分の注文だけキャンセルでき、
@@ -12,38 +13,11 @@ describe('cancel_order RPC', () => {
   beforeAll(async () => {
     userA = await createTestUser('customer')
     userB = await createTestUser('customer')
-
-    const adminClient = createAdminClient()
-    const { data: product, error } = await adminClient
-      .from('products')
-      .insert({
-        name: 'キャンセルテスト用ダミー商品',
-        category: 'accessory',
-        price_cents: 1000,
-        stock: 5,
-      })
-      .select('id')
-      .single()
-    expect(error).toBeNull()
-    productId = product!.id
+    productId = await createDummyProduct({ name: 'キャンセルテスト用ダミー商品' })
   })
 
   afterAll(async () => {
-    const adminClient = createAdminClient()
-
-    const { data: orders } = await adminClient
-      .from('orders')
-      .select('id')
-      .in('user_id', [userA.id, userB.id])
-    if (orders && orders.length > 0) {
-      await adminClient
-        .from('orders')
-        .delete()
-        .in('id', orders.map((o) => o.id))
-    }
-    await adminClient.from('cart_items').delete().eq('product_id', productId)
-    await adminClient.from('products').delete().eq('id', productId)
-
+    await cleanupTestData({ userIds: [userA.id, userB.id], productIds: [productId] })
     await deleteTestUser(userA.id)
     await deleteTestUser(userB.id)
   })
