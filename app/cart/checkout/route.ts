@@ -44,9 +44,16 @@ export async function POST(request: NextRequest) {
   const rawCouponCode = formData.get('coupon_code')
   const couponCode = typeof rawCouponCode === 'string' && rawCouponCode.trim() !== '' ? rawCouponCode.trim() : null
 
+  // フォーム側(CheckoutForm)がページ読み込み時に1回だけ生成したUUID。
+  // 二重クリック・戻る+再送信で同じキーのまま2回POSTされても、place_order側で
+  // 冪等に処理される(1回分の注文にしかならない)。
+  const rawIdempotencyKey = formData.get('idempotency_key')
+  const idempotencyKey = typeof rawIdempotencyKey === 'string' && rawIdempotencyKey !== '' ? rawIdempotencyKey : null
+
   const { data: orderId, error } = await supabase.rpc('place_order', {
     p_payment_method: paymentMethod,
     p_coupon_code: couponCode,
+    p_idempotency_key: idempotencyKey,
   })
   if (error) {
     const url = new URL('/cart', request.url)
