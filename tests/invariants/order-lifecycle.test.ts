@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import fc from 'fast-check'
 import { createTestUser, deleteTestUser, type TestUser } from '../helpers/test-users'
+import { createDummyProduct, cleanupTestData } from '../helpers/test-fixtures'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 // place_order()/cancel_order()を「注文→一部キャンセル→再注文→クーポン適用注文」のような
@@ -124,17 +125,11 @@ describe('注文ライフサイクルの不変条件(Property-Based)', () => {
           const user = await createTestUser('customer')
           const adminClient = createAdminClient()
 
-          const { data: product } = await adminClient
-            .from('products')
-            .insert({
-              name: '不変条件テスト用ダミー商品',
-              category: 'accessory',
-              price_cents: PRICE_CENTS,
-              stock: INITIAL_STOCK,
-            })
-            .select('id')
-            .single()
-          const productId = product!.id
+          const productId = await createDummyProduct({
+            name: '不変条件テスト用ダミー商品',
+            price_cents: PRICE_CENTS,
+            stock: INITIAL_STOCK,
+          })
 
           const couponCode = `INVTEST-${Math.random().toString(36).slice(2, 10)}`
           await adminClient.from('coupons').insert({
@@ -148,15 +143,7 @@ describe('注文ライフサイクルの不変条件(Property-Based)', () => {
             const setup = () => ({ model: { stock: INITIAL_STOCK, orders: [] as OrderRecord[] }, real })
             await fc.asyncModelRun(setup, cmds)
           } finally {
-            const { data: orders } = await adminClient.from('orders').select('id').eq('user_id', user.id)
-            if (orders && orders.length > 0) {
-              await adminClient
-                .from('orders')
-                .delete()
-                .in('id', orders.map((o) => o.id))
-            }
-            await adminClient.from('cart_items').delete().eq('product_id', productId)
-            await adminClient.from('products').delete().eq('id', productId)
+            await cleanupTestData({ userIds: [user.id], productIds: [productId] })
             await adminClient.from('coupons').delete().eq('code', couponCode)
             await deleteTestUser(user.id)
           }

@@ -1,13 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { createTestUser, deleteTestUser, type TestUser } from '../helpers/test-users'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createDummyProduct, cleanupTestData } from '../helpers/test-fixtures'
 
 describe('reviews RLS', () => {
   let userA: TestUser
   let userB: TestUser
   let admin: TestUser
   let productId: string
-  let orderAId: string
   let reviewAId: string
 
   beforeAll(async () => {
@@ -15,33 +14,18 @@ describe('reviews RLS', () => {
     userB = await createTestUser('customer')
     admin = await createTestUser('admin')
 
-    // 他テストファイルと在庫を奪い合わないよう、このテスト専用のダミー商品を使う
-    const adminClient = createAdminClient()
-    const { data: product } = await adminClient
-      .from('products')
-      .insert({ name: 'reviews.test.ts専用ダミー商品', category: 'accessory', price_cents: 1000, stock: 5 })
-      .select('id')
-      .single()
-    productId = product!.id
+    productId = await createDummyProduct({ name: 'reviews.test.ts専用ダミー商品' })
 
     // userAだけがこの商品を実際に購入する(place_order RPCで実注文を作る)
     const { data: cart } = await userA.client.from('carts').insert({ user_id: userA.id }).select('id').single()
     await userA.client.from('cart_items').insert({ cart_id: cart!.id, product_id: productId, quantity: 1 })
-    const { data: orderId, error: orderError } = await userA.client.rpc('place_order', { p_payment_method: 'card' })
+    const { error: orderError } = await userA.client.rpc('place_order', { p_payment_method: 'card' })
     expect(orderError).toBeNull()
-    orderAId = orderId as string
   })
 
   afterAll(async () => {
-    const adminClient = createAdminClient()
-    if (orderAId) {
-      await adminClient.from('orders').delete().eq('id', orderAId)
-    }
-    if (productId) {
-      await adminClient.from('reviews').delete().eq('product_id', productId)
-      await adminClient.from('cart_items').delete().eq('product_id', productId)
-      await adminClient.from('products').delete().eq('id', productId)
-    }
+    // reviewsはproductsへのon delete cascadeがあるため、商品削除で連鎖的に消える
+    await cleanupTestData({ userIds: [userA.id], productIds: [productId] })
     await deleteTestUser(userA.id)
     await deleteTestUser(userB.id)
     await deleteTestUser(admin.id)

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { createClient } from '@supabase/supabase-js'
 import { createTestUser, deleteTestUser, type TestUser } from '../helpers/test-users'
+import { createDummyProduct, cleanupTestData } from '../helpers/test-fixtures'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 // 売上ダッシュボードRPC(get_daily_sales / get_product_sales_summary)の認可・集計の回帰テスト。
@@ -31,15 +32,16 @@ describe('sales dashboard RPCs', () => {
     admin = await createTestUser('admin')
 
     const adminClient = createAdminClient()
-    const { data: products } = await adminClient
-      .from('products')
-      .insert([
-        { name: 'sales-dashboard.test.ts専用ダミー商品A', category: 'accessory', price_cents: 500, stock: 10 },
-        { name: 'sales-dashboard.test.ts専用ダミー商品B', category: 'accessory', price_cents: 700, stock: 10 },
-      ])
-      .select('id, name')
-    productAId = products!.find((p) => p.name.endsWith('A'))!.id
-    productBId = products!.find((p) => p.name.endsWith('B'))!.id
+    productAId = await createDummyProduct({
+      name: 'sales-dashboard.test.ts専用ダミー商品A',
+      price_cents: 500,
+      stock: 10,
+    })
+    productBId = await createDummyProduct({
+      name: 'sales-dashboard.test.ts専用ダミー商品B',
+      price_cents: 700,
+      stock: 10,
+    })
 
     // service roleで注文を直接作成する(place_order経由だとcreated_atを操作できないため)。
     // shipped: 集計に含まれる / cancelled: 除外される / 40日前: 30日窓の外
@@ -90,13 +92,7 @@ describe('sales dashboard RPCs', () => {
   })
 
   afterAll(async () => {
-    const adminClient = createAdminClient()
-    // order_itemsはorders.idへのon delete cascadeで連鎖削除される
-    for (const id of orderIds) {
-      await adminClient.from('orders').delete().eq('id', id)
-    }
-    await adminClient.from('products').delete().eq('id', productAId)
-    await adminClient.from('products').delete().eq('id', productBId)
+    await cleanupTestData({ userIds: [customer.id], productIds: [productAId, productBId] })
     await deleteTestUser(customer.id)
     await deleteTestUser(admin.id)
   })

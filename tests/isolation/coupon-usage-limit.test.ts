@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { createTestUser, deleteTestUser, type TestUser } from '../helpers/test-users'
+import { createDummyProduct, cleanupTestData } from '../helpers/test-fixtures'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 // usage_limit=1のクーポンを2人が同時に使おうとした場合、成功するのは1人だけで
@@ -16,19 +17,8 @@ describe('クーポン利用回数上限の同時実行', () => {
     userA = await createTestUser('customer')
     userB = await createTestUser('customer')
 
+    productId = await createDummyProduct({ name: 'クーポン上限テスト用ダミー商品', stock: 10 })
     const adminClient = createAdminClient()
-    const { data: product, error } = await adminClient
-      .from('products')
-      .insert({
-        name: 'クーポン上限テスト用ダミー商品',
-        category: 'accessory',
-        price_cents: 1000,
-        stock: 10,
-      })
-      .select('id')
-      .single()
-    expect(error).toBeNull()
-    productId = product!.id
 
     couponCode = `LIMIT1-${crypto.randomUUID().slice(0, 8)}`
     await adminClient.from('coupons').insert({
@@ -49,20 +39,8 @@ describe('クーポン利用回数上限の同時実行', () => {
   })
 
   afterAll(async () => {
-    const adminClient = createAdminClient()
-    const { data: orders } = await adminClient
-      .from('orders')
-      .select('id')
-      .in('user_id', [userA.id, userB.id])
-    if (orders && orders.length > 0) {
-      await adminClient
-        .from('orders')
-        .delete()
-        .in('id', orders.map((o) => o.id))
-    }
-    await adminClient.from('cart_items').delete().eq('product_id', productId)
-    await adminClient.from('products').delete().eq('id', productId)
-    await adminClient.from('coupons').delete().eq('code', couponCode)
+    await cleanupTestData({ userIds: [userA.id, userB.id], productIds: [productId] })
+    await createAdminClient().from('coupons').delete().eq('code', couponCode)
     await deleteTestUser(userA.id)
     await deleteTestUser(userB.id)
   })

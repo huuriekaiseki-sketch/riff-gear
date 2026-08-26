@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createTestUser, deleteTestUser, type TestUser } from '../helpers/test-users'
+import { createDummyProduct, cleanupTestData } from '../helpers/test-fixtures'
 
 // order_items.quantityにはCHECK制約が無かった(cart_itemsには`check (quantity > 0)`がある)。
 // place_order()は常にcart_itemsから明細を作るためアプリ経由では0以下の数量が入らないが、
@@ -13,20 +14,7 @@ describe('order_items.quantity 制約', () => {
 
   beforeAll(async () => {
     user = await createTestUser('customer')
-
-    const adminClient = createAdminClient()
-    const { data: product, error: productError } = await adminClient
-      .from('products')
-      .insert({
-        name: '制約テスト用ダミー商品',
-        category: 'accessory',
-        price_cents: 1000,
-        stock: 5,
-      })
-      .select('id')
-      .single()
-    expect(productError).toBeNull()
-    productId = product!.id
+    productId = await createDummyProduct({ name: '制約テスト用ダミー商品' })
 
     const { data: cart } = await user.client
       .from('carts')
@@ -43,16 +31,7 @@ describe('order_items.quantity 制約', () => {
   })
 
   afterAll(async () => {
-    const adminClient = createAdminClient()
-
-    if (orderId) {
-      await adminClient.from('orders').delete().eq('id', orderId)
-    }
-    if (productId) {
-      await adminClient.from('cart_items').delete().eq('product_id', productId)
-      await adminClient.from('products').delete().eq('id', productId)
-    }
-
+    await cleanupTestData({ userIds: [user.id], productIds: [productId] })
     await deleteTestUser(user.id)
   })
 
