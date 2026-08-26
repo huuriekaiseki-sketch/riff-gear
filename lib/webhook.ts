@@ -1,5 +1,8 @@
+import { logger } from '@/lib/logger'
+
 export type OrderWebhookPayload = {
   orderId: string
+  requestId?: string
   userId: string
   userEmail: string | null
   displayName: string | null
@@ -41,6 +44,9 @@ function buildSlackMessage(payload: OrderWebhookPayload): string {
   return [
     ':bell: 新しい注文が入りました',
     `注文ID: ${payload.orderId}`,
+    // request_idはlib/logger.tsの構造化ログ・Sentryのタグと同じ値。
+    // 障害調査時にSlack通知→ログ→Sentryイベントを1つの識別子で辿れるようにする。
+    ...(payload.requestId ? [`リクエストID: ${payload.requestId}`] : []),
     `ユーザー: ${payload.displayName ?? '未設定'} / ${payload.userEmail ?? '不明'} (${payload.userId})`,
     `お届け先: ${payload.postalCode ?? '未設定'} ${payload.address ?? ''}`.trim(),
     `電話番号: ${payload.phone ?? '未設定'}`,
@@ -64,10 +70,18 @@ export async function notifyAdminOfOrder(payload: OrderWebhookPayload): Promise<
       body: JSON.stringify({ text: buildSlackMessage(payload) }),
     })
     if (!response.ok) {
-      console.error(`注文Webhook通知に失敗しました: status=${response.status}`)
+      logger.error('注文Webhook通知に失敗しました', {
+        requestId: payload.requestId,
+        orderId: payload.orderId,
+        status: response.status,
+      })
     }
   } catch (err) {
-    console.error('注文Webhook通知に失敗しました', err)
+    logger.error('注文Webhook通知に失敗しました', {
+      requestId: payload.requestId,
+      orderId: payload.orderId,
+      error: err instanceof Error ? err.message : String(err),
+    })
   }
 }
 
@@ -95,10 +109,12 @@ export async function notifyAdminOfAbandonedCarts(carts: AbandonedCart[]): Promi
       body: JSON.stringify({ text: buildAbandonedCartMessage(carts) }),
     })
     if (!response.ok) {
-      console.error(`放棄カートWebhook通知に失敗しました: status=${response.status}`)
+      logger.error('放棄カートWebhook通知に失敗しました', { status: response.status })
     }
   } catch (err) {
-    console.error('放棄カートWebhook通知に失敗しました', err)
+    logger.error('放棄カートWebhook通知に失敗しました', {
+      error: err instanceof Error ? err.message : String(err),
+    })
   }
 }
 
@@ -121,9 +137,11 @@ export async function notifyAdminOfLowStock(items: LowStockItem[]): Promise<void
       body: JSON.stringify({ text: buildLowStockMessage(items) }),
     })
     if (!response.ok) {
-      console.error(`在庫僅少Webhook通知に失敗しました: status=${response.status}`)
+      logger.error('在庫僅少Webhook通知に失敗しました', { status: response.status })
     }
   } catch (err) {
-    console.error('在庫僅少Webhook通知に失敗しました', err)
+    logger.error('在庫僅少Webhook通知に失敗しました', {
+      error: err instanceof Error ? err.message : String(err),
+    })
   }
 }

@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import * as Sentry from '@sentry/nextjs'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getLowStockThreshold, notifyAdminOfLowStock, notifyAdminOfOrder } from '@/lib/webhook'
+import { logger, newRequestId } from '@/lib/logger'
 
 const PAYMENT_METHODS = ['card', 'bank_transfer', 'cod', 'convenience_store', 'qr_code'] as const
 const INSTANT_PAYMENT_METHODS: (typeof PAYMENT_METHODS)[number][] = ['card', 'qr_code']
@@ -16,6 +18,10 @@ async function simulateInstantPaymentGateway(): Promise<{ declined: boolean }> {
 // カートの内容を注文として確定するルートハンドラ。
 // 未ログインならログインページへ、place_order失敗時はカートページへエラー付きでリダイレクトする。
 export async function POST(request: NextRequest) {
+  // このリクエスト全体を通して使うID。構造化ログ・Sentryイベント・Slack通知の
+  // 3箇所に含めることで、障害発生時に1つのIDで横断的に追跡できるようにする。
+  const requestId = newRequestId()
+
   const supabase = await createServerSupabaseClient()
   const { data: userData } = await supabase.auth.getUser()
   if (!userData.user) {
@@ -33,6 +39,9 @@ export async function POST(request: NextRequest) {
   if (INSTANT_PAYMENT_METHODS.includes(paymentMethod as (typeof PAYMENT_METHODS)[number])) {
     const { declined } = await simulateInstantPaymentGateway()
     if (declined) {
+      // ダミー決済ゲートウェイの拒否は想定内の業務イベントであり、バグではない。
+      // Sentryには送らず、構造化ログにのみ記録する(errorではなくwarn)。
+      logger.warn('決済が拒否されました', { requestId, userId: userData.user.id, paymentMethod })
       const url = new URL('/cart', request.url)
       url.searchParams.set('error', '決済が拒否されました。カード情報をご確認のうえ、もう一度お試しください')
       return NextResponse.redirect(url)
@@ -56,12 +65,16 @@ export async function POST(request: NextRequest) {
     p_idempotency_key: idempotencyKey,
   })
   if (error) {
+    // place_order()が返すエラー(在庫不足・無効なクーポン等)は業務ルール上の
+    // 想定内の失敗であり、Sentryに送るべき「バグ」ではない。構造化ログにのみ記録する。
+    logger.warn('place_order失敗', { requestId, userId: userData.user.id, message: error.message })
     const url = new URL('/cart', request.url)
     url.searchParams.set('error', error.message)
     return NextResponse.redirect(url)
   }
 
-  await notifyAdminOrderPlaced(supabase, orderId, userData.user, paymentMethod)
+  logger.info('注文が確定しました', { requestId, orderId, userId: userData.user.id })
+  await notifyAdminOrderPlaced(supabase, orderId, userData.user, paymentMethod, requestId)
 
   return NextResponse.redirect(new URL(`/orders/${orderId}`, request.url))
 }
@@ -72,7 +85,8 @@ async function notifyAdminOrderPlaced(
   supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
   orderId: string,
   user: { id: string; email?: string },
-  paymentMethod: string
+  paymentMethod: string,
+  requestId: string
 ) {
   try {
     const [{ data: orderRow }, { data: profile }] = await Promise.all([
@@ -90,6 +104,7 @@ async function notifyAdminOrderPlaced(
 
     await notifyAdminOfOrder({
       orderId,
+      requestId,
       userId: user.id,
       userEmail: user.email ?? null,
       displayName: profile?.display_name ?? null,
@@ -116,6 +131,14 @@ async function notifyAdminOrderPlaced(
 
     await notifyAdminOfLowStock(lowStockItems)
   } catch (err) {
-    console.error('注文Webhook通知用データの取得に失敗しました', err)
+    // ここは「注文は成立したのに、通知用データの取得だけが失敗した」という
+    // 想定外の状態(DB読み取り異常等)であり、業務ルールの失敗ではない。
+    // 構造化ログに加えてSentryにも送り、後で気づけるようにする。
+    logger.error('注文Webhook通知用データの取得に失敗しました', {
+      requestId,
+      orderId,
+      error: err instanceof Error ? err.message : String(err),
+    })
+    Sentry.captureException(err, { tags: { requestId, orderId } })
   }
 }
