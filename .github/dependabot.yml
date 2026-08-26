@@ -1,0 +1,35 @@
+# issue #97: npm・GitHub Actionsのバージョン更新を自動化する。
+# Actions無料枠(private 2,000分/月)を2026-08-25に使い切った実例があるため、
+# 依存更新PRの頻度・件数は意図的に絞っている(依存更新PRは.mdのみの変更ではないため
+# PR #95のCIスキップ機構が効かず、フルCIが走る)。
+# - scheduleはweeklyではなくmonthly
+# - patch/minorはgroupsで1本のPRにまとめる(major はグループ化せず個別レビューする)
+# - open-pull-requests-limitを3に絞り、PRの乱発を防ぐ
+#
+# Dependabotでカバーされないもの(別途手動確認が要る):
+# - .github/workflows/内のnode-versionのベタ書き
+# - supabase/setup-cliのversion: latest(浮動指定)
+# - Supabaseプラットフォーム側・Postgresのバージョン
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    groups:
+      npm-patch-minor:
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    groups:
+      actions-patch-minor:
+        update-types:
+          - "minor"
+          - "patch"
