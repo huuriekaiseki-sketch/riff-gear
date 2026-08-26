@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import {
   calculateSalesSummary,
+  resolveDashboardViewState,
   sortProductSalesByRevenue,
   toDailySalesChartData,
   type DailySalesRow,
@@ -17,7 +18,35 @@ export default async function AdminDashboardPage() {
   const { data: userData } = await supabase.auth.getUser()
   const isAdmin = userData.user?.app_metadata?.role === 'admin'
 
-  if (!isAdmin) {
+  // 非管理者はどのみちRPC側のis_admin()チェックで拒否されるだけなので、
+  // 無駄なDBラウンドトリップを避けるためisAdminがtrueのときだけRPCを呼ぶ。
+  const [{ data: dailySales, error: dailySalesError }, { data: productSales, error: productSalesError }] = isAdmin
+    ? await Promise.all([
+        supabase.rpc('get_daily_sales', { days: DAILY_SALES_DAYS }) as unknown as Promise<{
+          data: DailySalesRow[] | null
+          error: { message: string } | null
+        }>,
+        supabase.rpc('get_product_sales_summary') as unknown as Promise<{
+          data: ProductSalesSummaryRow[] | null
+          error: { message: string } | null
+        }>,
+      ])
+    : [
+        { data: null, error: null } as { data: DailySalesRow[] | null; error: { message: string } | null },
+        { data: null, error: null } as { data: ProductSalesSummaryRow[] | null; error: { message: string } | null },
+      ]
+
+  // 「管理者チェック→RPCエラー時→成功時」の分岐は純関数(resolveDashboardViewState)に
+  // 切り出してあり、lib/sales-dashboard.test.tsで単体テストされている。
+  const viewState = resolveDashboardViewState({
+    isAdmin,
+    dailySales,
+    dailySalesError,
+    productSales,
+    productSalesError,
+  })
+
+  if (viewState.status === 'forbidden') {
     return (
       <p role="alert" className="text-danger">
         このページには管理者のみアクセスできます。
@@ -25,22 +54,10 @@ export default async function AdminDashboardPage() {
     )
   }
 
-  const [{ data: dailySales, error: dailySalesError }, { data: productSales, error: productSalesError }] =
-    await Promise.all([
-      supabase.rpc('get_daily_sales', { days: DAILY_SALES_DAYS }) as unknown as Promise<{
-        data: DailySalesRow[] | null
-        error: { message: string } | null
-      }>,
-      supabase.rpc('get_product_sales_summary') as unknown as Promise<{
-        data: ProductSalesSummaryRow[] | null
-        error: { message: string } | null
-      }>,
-    ])
-
-  if (dailySalesError || productSalesError) {
+  if (viewState.status === 'error') {
     return (
       <p role="alert" className="text-danger">
-        売上データの取得に失敗しました: {dailySalesError?.message ?? productSalesError?.message}
+        売上データの取得に失敗しました: {viewState.message}
       </p>
     )
   }
@@ -48,9 +65,9 @@ export default async function AdminDashboardPage() {
   // 売上の定義: status='cancelled'以外の全注文を集計対象とする（get_product_sales_counts()と同じ思想）。
   // 集計自体はDB側のRPC(get_daily_sales / get_product_sales_summary)で完結しており、
   // ここではRPC結果からサマリー計算・表示用整形のみを行う。
-  const summary = calculateSalesSummary(dailySales ?? [])
-  const chartData = toDailySalesChartData(dailySales ?? [])
-  const rankedProductSales = sortProductSalesByRevenue(productSales ?? [])
+  const summary = calculateSalesSummary(viewState.dailySales)
+  const chartData = toDailySalesChartData(viewState.dailySales)
+  const rankedProductSales = sortProductSalesByRevenue(viewState.productSales)
   const maxDailyTotalCents = Math.max(1, ...chartData.map((d) => d.totalCents))
 
   return (
