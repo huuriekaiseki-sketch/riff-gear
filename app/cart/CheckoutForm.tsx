@@ -24,6 +24,10 @@ export default function CheckoutForm({
   const [submitting, setSubmitting] = useState(false)
   const [discountPercent, setDiscountPercent] = useState<number | null>(null)
   const [checkingCoupon, setCheckingCoupon] = useState(false)
+  // ページ読み込み時に1回だけ生成し、フォーム内に保持する。二重クリックや
+  // 戻る+再送信で同じキーのまま2回POSTされても、place_order側で1回分の
+  // 注文として扱われる(冪等キー)。
+  const [idempotencyKey] = useState(() => crypto.randomUUID())
 
   // クーポンコード入力欄からフォーカスが外れたタイミングで、DBに直接問い合わせて
   // 割引率をプレビュー表示する。注文確定時の正式な検証はplace_order側で別途行うため、
@@ -58,6 +62,7 @@ export default function CheckoutForm({
       className="mt-4"
       onSubmit={() => setSubmitting(true)}
     >
+      <input type="hidden" name="idempotency_key" value={idempotencyKey} />
       <fieldset className={submitting ? 'pointer-events-none opacity-50' : undefined}>
         <legend className="text-sm font-medium text-foreground">支払い方法</legend>
         <div className="mt-2 flex flex-col gap-2 text-sm text-gray-600 dark:text-gray-300">
