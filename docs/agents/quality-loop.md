@@ -44,3 +44,54 @@ riff-gearの品質の仕組み（テスト・テンプレート・スキル・ho
 - **どこにも留めない** — 一回性と判断した場合（その判断自体は正当。ただし2回目が来たら昇格）
 
 置き場に迷ったら昇格基準に照らす。基準を満たさないものを義務化しないことも、この判定の役割である。
+
+## 現在地
+
+作業に着手する前に、対象・テスト方針・完了条件を1枚にまとめてから進めるための欄。
+更新のたびに上書きする（履歴が必要な場合はこのファイルのgit historyを見る）。
+
+_最終更新: 2026-08-29（Codexレビュー対応セッション）_
+
+### 直前に完了した項目
+
+P0-1: `place_order()`の冪等キー機構をアプリ側に配線 — **要着手なし。8/26のPR #102で実装済みだった**
+
+- Codexレビューが「アプリ側がp_idempotency_keyを渡していない」と指摘したが、裏取りせず着手した結果の誤り。
+  `app/cart/CheckoutForm.tsx`/`app/cart/checkout/route.ts`は既に配線済み、テストも
+  `tests/idempotency/`・`tests/isolation/`・`tests/fault-injection/`に用意済みだった
+- 詳細と再発防止策は[known-failure-patterns.md](known-failure-patterns.md)の
+  「レビュー・引き継ぎ情報を鵜呑みにした誤診断」を参照
+
+### 次に着手する項目
+
+P1-2: 注文明細・注文合計のDB制約を補強する
+
+#### 対象
+
+- `order_items.price_cents_at_order >= 0`
+- `orders.total_cents >= 0`
+- `unique(order_id, product_id)`
+
+#### 選ぶテスト
+
+- [x] DB制約テスト
+- [x] migrationテスト
+- [x] cancel_orderのRPC統合テスト
+- [ ] 並行実行テスト（制約変更のみなら原則不要。設計変更時に再判断）
+
+#### 完了条件
+
+- 不正値・重複明細をDBが拒否する
+- 既存注文データへのmigrationが成功する
+- キャンセル時の在庫復元が正しい
+
+### 未着手のまま残っている項目（Codexレビュー由来）
+
+- P0-2: 決済RPC直叩き対策（実決済統合のタイミングでまとめて設計）
+- P1-1: admin直接UPDATEの制限（専用RPCへの集約、不変列保護トリガー）
+- P1-3: ユーザー削除時のカスケード削除による在庫不整合
+- P1-4: クーポン適用結果（コード・割引額）の注文への未保存
+- P2-1: クーポンコードの匿名ユーザー全件SELECT公開
+- P2-2: `total_cents = 0`による空カート判定と0円商品の矛盾
+- P2-3: `SECURITY DEFINER`関数の`search_path`/EXECUTE権限の明示不足
+- P2-4: `order_items(order_id)`のインデックス欠如
