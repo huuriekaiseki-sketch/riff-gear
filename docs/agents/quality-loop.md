@@ -61,7 +61,11 @@ P1-2: 注文明細・注文合計のDB制約を補強する
 - 変更: [0028_order_amount_constraints.sql](../../supabase/migrations/0028_order_amount_constraints.sql)
 - テスト: `tests/constraints/order-amount-constraints.test.ts`を新規追加。
   `supabase db reset`でmigration適用を確認し、既存の`tests/rpc/cancel_order.test.ts`
-  含む全162件・typecheck・lintがパスすることを確認済み
+  含む全162件・typecheck・lint・production buildがパスすることを確認済み
+- migration安全性: 制約追加前の不正データ(`total_cents=-500`)を挿入した状態で
+  0028を適用すると、サイレントに無視されず`ERROR: check constraint ... is violated
+  by some row (SQLSTATE 23514)`で明示的に失敗することを一時マイグレーションで検証
+  (検証用ファイルは削除済み、最終状態はクリーン)
 
 参考(誤診断だったP0-1の経緯): `place_order()`の冪等キー機構は既に8/26のPR #102で
 実装済みだった。詳細と再発防止策は[known-failure-patterns.md](known-failure-patterns.md)の
