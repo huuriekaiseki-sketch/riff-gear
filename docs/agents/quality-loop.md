@@ -54,38 +54,20 @@ _最終更新: 2026-08-29（Codexレビュー対応セッション）_
 
 ### 直前に完了した項目
 
-P0-1: `place_order()`の冪等キー機構をアプリ側に配線 — **要着手なし。8/26のPR #102で実装済みだった**
-
-- Codexレビューが「アプリ側がp_idempotency_keyを渡していない」と指摘したが、裏取りせず着手した結果の誤り。
-  `app/cart/CheckoutForm.tsx`/`app/cart/checkout/route.ts`は既に配線済み、テストも
-  `tests/idempotency/`・`tests/isolation/`・`tests/fault-injection/`に用意済みだった
-- 詳細と再発防止策は[known-failure-patterns.md](known-failure-patterns.md)の
-  「レビュー・引き継ぎ情報を鵜呑みにした誤診断」を参照
-
-### 次に着手する項目
-
 P1-2: 注文明細・注文合計のDB制約を補強する
 
-#### 対象
+- 対象: `order_items.price_cents_at_order >= 0`、`orders.total_cents >= 0`、
+  `unique(order_id, product_id)`
+- 変更: [0028_order_amount_constraints.sql](../../supabase/migrations/0028_order_amount_constraints.sql)
+- テスト: `tests/constraints/order-amount-constraints.test.ts`を新規追加。
+  `supabase db reset`でmigration適用を確認し、既存の`tests/rpc/cancel_order.test.ts`
+  含む全162件・typecheck・lintがパスすることを確認済み
 
-- `order_items.price_cents_at_order >= 0`
-- `orders.total_cents >= 0`
-- `unique(order_id, product_id)`
+参考(誤診断だったP0-1の経緯): `place_order()`の冪等キー機構は既に8/26のPR #102で
+実装済みだった。詳細と再発防止策は[known-failure-patterns.md](known-failure-patterns.md)の
+「レビュー・引き継ぎ情報を鵜呑みにした誤診断」を参照
 
-#### 選ぶテスト
-
-- [x] DB制約テスト
-- [x] migrationテスト
-- [x] cancel_orderのRPC統合テスト
-- [ ] 並行実行テスト（制約変更のみなら原則不要。設計変更時に再判断）
-
-#### 完了条件
-
-- 不正値・重複明細をDBが拒否する
-- 既存注文データへのmigrationが成功する
-- キャンセル時の在庫復元が正しい
-
-### 未着手のまま残っている項目（Codexレビュー由来）
+### 次に着手する項目（Codexレビュー由来、未着手）
 
 - P0-2: 決済RPC直叩き対策（実決済統合のタイミングでまとめて設計）
 - P1-1: admin直接UPDATEの制限（専用RPCへの集約、不変列保護トリガー）
