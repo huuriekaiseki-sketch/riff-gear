@@ -3,7 +3,9 @@
     "SessionStart": [
       {
         "hooks": [
-          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/scripts/check-branch-pr-status.sh", "timeout": 15 }
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/scripts/check-branch-pr-status.sh", "timeout": 15 },
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/scripts/check-main-freshness.sh", "timeout": 15 },
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/scripts/check-worktree-branch-hygiene.sh", "timeout": 10 }
         ]
       }
     ],
