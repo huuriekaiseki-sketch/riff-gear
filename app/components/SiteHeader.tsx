@@ -105,6 +105,9 @@ export default async function SiteHeader() {
               <Link href="/admin/products" className="transition-colors hover:text-primary">
                 商品管理
               </Link>
+              <Link href="/admin/coupons" className="transition-colors hover:text-primary">
+                クーポン管理
+              </Link>
               <Link href="/admin/dashboard" className="transition-colors hover:text-primary">
                 売上
               </Link>
