@@ -167,16 +167,27 @@ export default async function AdminProductsPage() {
                       required
                       className="w-24 rounded-lg border border-gray-300 bg-transparent px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-700"
                     />
-                    <input
-                      type="number"
-                      name="stock"
-                      defaultValue={product.stock}
-                      min={0}
-                      step={1}
-                      required
-                      aria-label={`${product.name}の在庫数`}
-                      className="w-20 rounded-lg border border-gray-300 bg-transparent px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-700"
-                    />
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        name="stock"
+                        defaultValue={product.stock}
+                        min={0}
+                        step={1}
+                        required
+                        aria-label={`${product.name}の在庫数`}
+                        className="w-20 rounded-lg border border-gray-300 bg-transparent px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-700"
+                      />
+                      {product.stock === 0 ? (
+                        <span className="inline-flex w-fit items-center whitespace-nowrap rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                          在庫切れ
+                        </span>
+                      ) : product.stock <= 3 ? (
+                        <span className="inline-flex w-fit items-center gap-1 whitespace-nowrap rounded-full bg-warning/15 px-2.5 py-0.5 text-xs font-semibold text-warning">
+                          残りわずか{product.stock}点
+                        </span>
+                      ) : null}
+                    </div>
                     <label className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300">
                       <input
                         type="checkbox"
