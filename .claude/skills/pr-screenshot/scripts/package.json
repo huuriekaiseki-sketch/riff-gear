@@ -1,0 +1,9 @@
+{
+  "name": "pr-screenshot-scripts",
+  "private": true,
+  "description": "riff-gear PR用スクリーンショット撮影・注釈スキルの実行用依存関係。本体のpackage.jsonとは独立させ、依存を汚さない。",
+  "dependencies": {
+    "puppeteer-core": "^25.9.0",
+    "sharp": "^0.35.4"
+  }
+}

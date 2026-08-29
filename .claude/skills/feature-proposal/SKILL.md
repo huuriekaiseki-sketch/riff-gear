@@ -66,6 +66,8 @@ Sweeper・Finderの結果を踏まえ、実装方針をAskUserQuestionで確認�
 
 **Phase2ワークフローを使った場合も**、Role 5のCriticチェックリストは省略しない（integratorのbuild/test確認を鵜呑みにせず、最終的な`git diff`確認は必ず人間相当の目で行う）。ロールバックSQLの要否もPhase2内のdb実装エージェントに同様に指示する。
 
+**UI変更を検知したらpr-screenshotスキルの使用を確認する**: `aidd-phase2`の返り値(`result.uiChange`)は`changedFiles`のパスから`app/**/page.tsx`の変更を機械判定している(推測ではない)。`uiChange.uiChanged`が`true`なら、`uiChange.pagePaths`(App Router規約で変換したURLパス候補)を添えて「UI変更を検知しました。`pr-screenshot`スキルでPR用スクリーンショットを撮りますか？」と開発者に確認する。手動実装フロー(影響層1つ)でUIを変更した場合も同様に確認する(この場合は`app/`配下の`.tsx`を変更したかどうかで自分で判定する)。
+
 ### Role 5: Critic（検証・批判）
 
 Implementerの「動いた」を疑う。まず検証範囲をAskUserQuestionで確認してから、基本チェックリストを実施する。

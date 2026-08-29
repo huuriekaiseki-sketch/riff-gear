@@ -128,6 +128,24 @@ function deriveTestSelection(changedFiles, risks, specTests) {
   return { required: [...required], recommended: [...recommended], notes }
 }
 
+// changedFilesのパスからUI変更を機械判定する。app/**/page.tsx の変更は
+// Next.js App Routerの規約(app/foo/bar/page.tsx → /foo/bar)でURLパスに変換できるため、
+// pr-screenshotスキルにそのまま渡せるTARGET_PATH候補も併せて返す。
+// 「UI変更があったかどうか」を推測させず、呼び出し元(メインループ)が確実に
+// pr-screenshotスキルの案内を出せるようにするための機械判定。
+function detectUiChange(changedFiles) {
+  const uiFiles = (changedFiles ?? [])
+    .map(normalizePath)
+    .filter((p) => p.startsWith('app/') && p.endsWith('.tsx'))
+  const pagePaths = uiFiles
+    .filter((p) => p.endsWith('/page.tsx') || p === 'app/page.tsx')
+    .map((p) => {
+      const withoutPrefix = p.replace(/^app/, '').replace(/\/page\.tsx$/, '').replace(/^\/page\.tsx$/, '')
+      return withoutPrefix === '' ? '/' : withoutPrefix
+    })
+  return { uiChanged: uiFiles.length > 0, uiFiles, pagePaths }
+}
+
 function formatTestTypes(keys) {
   if (keys.length === 0) return '(なし)'
   return keys.map((k) => `- ${TEST_TYPES[k].label} (キー: ${k}, 置き場所: ${TEST_TYPES[k].hint})`).join('\n')
@@ -289,6 +307,7 @@ while (true) {
         changedFiles,
         retries: retry,
         testSelection: { ...testSelection, risks: allRisks },
+        uiChange: detectUiChange(changedFiles),
       },
     }
   }

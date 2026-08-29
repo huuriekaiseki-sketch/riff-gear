@@ -14,6 +14,9 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // supabase start / db reset が生成するローカル専用の一時ファイル(git管理外)
     "supabase/.temp/**",
+    // Claude Codeスキルの実行用スクリプトはCommonJS(Node直実行)前提で、
+    // アプリ本体のTypeScript/ESM向けlintルール(no-require-imports等)は対象外にする
+    ".claude/skills/**/scripts/**",
   ]),
 ]);
 
