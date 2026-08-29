@@ -1,94 +1,30 @@
 # PR用スクリーンショットの撮影と注釈
 
-UI変更のPRで「何がどう変わったか」を一目で伝えるための、矢印・ラベル付きスクリーンショットの撮り方。PR #119（管理者向けクーポン管理画面）で試行し、うまくいった手順をここに残す。
+UI変更のPRで「何がどう変わったか」を一目で伝えるためのスクリーンショットの撮り方。**実装本体は[pr-screenshotスキル](../../.claude/skills/pr-screenshot/SKILL.md)にある。このファイルは経緯と教訓の記録。**
 
-## できないこと（先に明記する）
+## できないこと（先に把握する）
 
-`gh` CLIにはPR本文への画像アップロード機能がない。GitHub側の画像アップロードはブラウザのドラッグ&ドロップ／クリップボード貼り付けが前提で、この制約はブラウザ自動化ツール（Claude Browser）側にもファイルアップロード操作がないため回避できない。
+`gh` CLIにはPR本文への画像アップロード機能がなく、Claude Codeのブラウザ自動化ツールにもファイルアップロード操作がない。したがって**PR本文への貼り付けは人間の手作業になる**。Claude Codeがやるのは、注釈付きPNGをファイルとして`SendUserFile`で渡すところまで。この制約を回避しようとして時間をかけない。
 
-したがって**PR本文への貼り付けは人間の手作業が必要**。Claude Codeは以下を行う:
+## ここに至るまでの経緯（PR #119）
 
-1. 注釈付きスクリーンショットを撮り、会話内（ツール結果）で提示する
-2. `gh pr create`のPR本文には「スクリーンショットは別途貼り付け」等の一言を残す、または後から人間が編集する前提にする
+最初は`javascript_tool`でDOM上に矢印・ラベルをposition:fixedで注入し、Browser MCPの`computer` screenshotで撮る方式を試した。うまく動いたように見えたが、2つの問題が判明した:
 
-「完全自動化できない」こと自体は仕様であり、回避策を探して時間をかけない。
+1. **`computer` screenshotの出力はツール結果として表示されるだけで、ファイルとしてユーザーに渡っていなかった**。「見えていましたか？」と確認したところ「見えてなかった」と判明。ダウンロード可能なファイルが必要なら、`puppeteer-core`(システムのChromeを操作)で`page.screenshot({path: ...})`により実ファイルとして保存する必要がある。
+2. **矢印+固定座標のオーバーレイは、見た目を1つ直すたびにブラウザ再起動・ログイン・DBリセットが必要で著しく遅い**。ユーザーから「同じことをずっと繰り返してる」と指摘され、以下の設計に改めた。
 
-## 手順
+## 現在の設計: 撮影と注釈の分離
 
-前提: `preview_start`でdevサーバーが起動済み、対象ページが表示されていること。
+- **撮影フェーズ(重い・1回だけ)**: `puppeteer-core`でログイン→対象ページに到達→**加工なしの生スクリーンショット**と、注釈対象要素の座標(`getBoundingClientRect()`)をJSONで保存する
+- **注釈フェーズ(軽い・何度でも編集可)**: 生PNG+座標JSONに対して`sharp`で枠線・ラベル・ページ名バナーを合成する。ブラウザ・DB・ログインを一切使わないため、見た目調整は1秒未満で繰り返せる
 
-### 1. 注釈対象の座標を取得する
+さらにユーザーから2つの改善要望があり反映済み:
 
-`javascript_tool`でDOM要素の`getBoundingClientRect()`を読む。座標系はブラウザの実ビューポート（例: 1280x720）であり、`computer`のスクリーンショット画像サイズ（例: 800x450）とは異なることに注意。ただし**変換は不要**——次のステップで`position:fixed`の注釈をこの実座標系のまま配置すれば、スクリーンショットは自動的に縮小されて正しい位置に描かれる。
+- 矢印による位置合わせはズレる事故が起きたため、**対象要素を直接枠で囲む**(outline)方式に変更した。要素自身に枠を当てるのでズレようがない
+- PRを見る人が「これはどこの画面の変更か」を判別できるよう、**画像上部にページ名・URLパスのバナー**を必ず入れる
 
-```js
-function rectOf(text, tag) {
-  const els = Array.from(document.querySelectorAll(tag || '*'));
-  const el = els.find(e => e.children.length === 0 && e.textContent.trim() === text);
-  if (!el) return null;
-  const r = el.getBoundingClientRect();
-  return { x: r.x, y: r.y, width: r.width, height: r.height };
-}
-JSON.stringify({ target: rectOf('対象テキスト', 'a') });
-```
+詳しい実装(スクリプトのAPI・環境変数・既知のハマりどころ)は[pr-screenshotスキルのSKILL.md](../../.claude/skills/pr-screenshot/SKILL.md)を参照。
 
-テーブルの特定行など動的な要素は`querySelectorAll('tbody tr')`から`textContent.includes(...)`で絞り込む。列位置は`thead th`のrectを使うと正確。
+## ワークフローとの連携
 
-### 2. 注釈レイヤーを注入する
-
-`javascript_tool`で`position:fixed`のオーバーレイ層を1つ作り、その中に矢印（SVG）とラベル（div）を追加する。レイヤーには固定IDを付け、再実行時は先に削除してから作り直す（重複防止）。
-
-```js
-(function() {
-  document.getElementById('annotation-layer')?.remove();
-  const layer = document.createElement('div');
-  layer.id = 'annotation-layer';
-  layer.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:999999;font-family:sans-serif;';
-  document.body.appendChild(layer);
-
-  function label(text, left, top, color) {
-    const d = document.createElement('div');
-    d.textContent = text;
-    d.style.cssText = `position:fixed;left:${left}px;top:${top}px;background:${color};color:#fff;padding:6px 10px;border-radius:6px;font-size:14px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,.3);white-space:nowrap;`;
-    layer.appendChild(d);
-  }
-  function arrow(x1, y1, x2, y2, color) {
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('style', 'position:fixed;left:0;top:0;width:100%;height:100%;overflow:visible;');
-    const markerId = 'arrowhead-' + Math.random().toString(36).slice(2);
-    svg.innerHTML = `<defs><marker id="${markerId}" markerWidth="10" markerHeight="10" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="${color}"/></marker></defs><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="3" marker-end="url(#${markerId})"/>`;
-    layer.appendChild(svg);
-  }
-
-  arrow(400, 100, 400, 150, '#e11d48');
-  label('① 変更点の説明', 250, 70, '#e11d48');
-})();
-```
-
-番号付き（①②③…）にして、PRの説明文と対応させると読みやすい。色は要素ごとに変える（例: 新規追加=赤、変更=紫、確認ポイント=緑）。
-
-### 3. スクリーンショットを撮る
-
-`computer`の`screenshot`アクションで撮影する。ツール結果の画像がそのまま会話に表示されるので、ユーザーはこの時点で確認できる。
-
-### 4. ラベルの重なりに注意する
-
-複数のラベルを近い位置に置くと重なって見えなくなることがある（実際に発生した）。原因はテキスト幅を見込まずに固定座標を計算したこと。対策:
-
-- 注釈注入後に`document.getElementById('annotation-layer').children`を`getBoundingClientRect()`で読み、実際の描画位置とサイズを確認してから調整する
-- ラベル同士の`left`/`top`を最低120px程度離す
-- スクリーンショットの画像サイズ（例800px幅）を超える`left`値を使わない（ビューポート座標系がスクショの実ピクセル幅より大きい場合、右端に置いたラベルが切れる）
-
-### 5. 注釈を消して元の状態に戻す
-
-Critic検証（`git diff`確認・E2Eの再現性確認）やスクリーンショットの撮り直しのために、都度クリアする。
-
-```js
-document.getElementById('annotation-layer')?.remove();
-```
-
-PRとしてコミットするコードには注釈レイヤーのコードは含まれない（`javascript_tool`はブラウザのランタイムに対してのみ実行され、ソースファイルは変更しない）。
-
-## 実例
-
-PR #119では、クーポン管理画面の「作成後」「無効化後」の2状態それぞれに①〜⑤の番号付き矢印・ラベルを重ねてスクリーンショットを撮り、会話内で提示した。ユーザーが`gh pr create`後にGitHub UI上でPR本文へドラッグ&ドロップした。
+`aidd-phase2`ワークフロー([.claude/workflows/aidd-phase2.js](../../.claude/workflows/aidd-phase2.js))は、Review通過時の返り値に`result.uiChange`(changedFilesのパスから`app/**/page.tsx`の変更を機械判定した結果、`uiChanged`フラグと`pagePaths`候補を含む)を持つ。`feature-proposal`スキルのRole 4は、これが`true`ならpr-screenshotスキルの使用を開発者に確認する運用にしている。
