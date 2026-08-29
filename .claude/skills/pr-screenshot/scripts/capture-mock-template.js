@@ -2,6 +2,14 @@
 // designスキルで作ったArtifact URL、またはローカルの.dc.html/.htmlファイルを
 // そのまま撮影する。capture-template.js(ログイン+Supabase Admin API前提)とは別物。
 //
+// 【重要】design skillのartboard(.dc.html)はsandboxed iframe内でレンダリングされる。
+// そのため要素のrectを取るには、通常のpage.evaluate()ではなく、iframe要素の
+// contentFrame()から得たフレームに対してevaluateし、iframe自体のメインページ上での
+// 位置(boundingBox())を加算して絶対座標に変換する必要がある(下記の書き換え例を参照)。
+// これをせずdocument.querySelector()をトップレベルドキュメントに対して実行すると、
+// artboard内の要素は見つからない(実機で確認済み)。またiframeのマウントには数秒
+// かかるため、goto後は最低5〜6秒sleepしてからスクリーンショットを撮ること。
+//
 // 環境変数:
 //   MOCK_URL   撮影対象。http(s)://のURL、またはローカルファイルパス(自動でfile://化) (必須)
 //
@@ -15,6 +23,8 @@
 const fs = require('fs');
 const path = require('path');
 const puppeteer = require('puppeteer-core');
+
+function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
 const CHROME = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const MOCK_URL = process.env.MOCK_URL;
@@ -41,12 +51,36 @@ function resolveUrl(input) {
 
   const url = resolveUrl(MOCK_URL);
   await page.goto(url, { waitUntil: 'networkidle0' });
+  await sleep(6000); // design skillのartboardがiframe内でマウントされるのを待つ
 
   // ============================================================
   // ここを対象モックに合わせて書き換える(ハイライトしたい要素があれば)
   // ============================================================
   //
+  // design skillのモック(artboardがsandboxed iframe内にある)の場合:
+  //
   // await page.screenshot({ path: path.join(OUT_DIR, 'raw_mock.png') });
+  //
+  // const iframeHandle = await page.$('iframe');
+  // const iframeBox = await iframeHandle.boundingBox(); // メインページ上でのiframeの位置
+  // const frame = await iframeHandle.contentFrame();
+  // const rectsInFrame = await frame.evaluate(() => {
+  //   const el = document.querySelector('button');
+  //   const r = el.getBoundingClientRect();
+  //   return { target: { x: r.x, y: r.y, width: r.width, height: r.height } };
+  // });
+  // // iframe内座標 + iframe自体のメインページ上でのオフセットを足して絶対座標にする
+  // const rects = Object.fromEntries(
+  //   Object.entries(rectsInFrame).map(([key, r]) => [
+  //     key,
+  //     { x: r.x + iframeBox.x, y: r.y + iframeBox.y, width: r.width, height: r.height },
+  //   ])
+  // );
+  // fs.writeFileSync(path.join(OUT_DIR, 'rects.json'), JSON.stringify({ viewport, ...rects }, null, 2));
+  //
+  // design skill以外の、iframeを使わないシンプルな静的htmlの場合は、
+  // page.evaluate()をそのまま使ってよい(iframe座標変換は不要):
+  //
   // const rects = await page.evaluate(() => {
   //   const el = document.querySelector('button');
   //   const r = el.getBoundingClientRect();

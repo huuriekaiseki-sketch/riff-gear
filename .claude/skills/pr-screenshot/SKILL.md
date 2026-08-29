@@ -48,11 +48,10 @@ npm install   # 初回のみ
 ```bash
 cp capture-mock-template.js capture-mock.js
 MOCK_URL=./design-mock/Main.dc.html node capture-mock.js   # ローカルファイル
-# または
-MOCK_URL=https://claude.ai/code/artifact/xxxx node capture-mock.js   # 公開Artifact URL
 ```
 
-- `design`スキルの保存機能でプライベート公開したArtifact URLは、このブラウザにログインセッションが無いため開けないことが多い。その場合はローカルの`.dc.html`ファイルを直接指定する(静的な見た目の確認で足りる)
+- **`design`スキルのArtifact URL(`claude.ai/code/artifact/...`)は基本的に開けない**（実機で確認済み）。designスキルが公開する前にローカルへ生成する完全なhtmlファイル(`seed-canvas.mjs --out`で指定したパス)を`MOCK_URL`に指定すること。Artifact URLは非公開ページのため、ログインセッションを持たないこのスクリプトの起動先ブラウザからは「Page not found」になる
+- **design skillのartboardはsandboxed iframe内でレンダリングされる**。要素のハイライト用にrectを取る場合は、`capture-mock-template.js`内のコメントにある通り`iframe`の`contentFrame()`経由で取得し、`iframe`自体の位置を加算して絶対座標に変換すること。トップレベルの`document.querySelector()`では見つからない。iframeのマウントには数秒かかるため、`goto`後は最低5〜6秒sleepしてから撮影する
 - `raw_mock.png`ができたら`annotate.js`で注釈する。ページ名バナーには「（実装前モック）〇〇」のように実装前だと分かる表記を入れ、実装後の`annotated_*.png`と混同しないようにする
 - 仕様書(`docs/specs/`)に貼るafter画像として使う。before画像(既存ページの現状)は通常の`capture-template.js`で撮る
 
