@@ -37,7 +37,7 @@ riff-gearの品質の仕組み（テスト・テンプレート・スキル・ho
 
 障害・CI失敗・レビュー指摘・実装中のハマりが起きたら、**修正と同時に「どこに留めるか」を1行決める**（feature-proposal skillのRole 6に組込済み）。選択肢:
 
-- **テスト** — 再発を機械が検知すべきもの（回帰・境界値）
+- **テスト** — 再発を機械が検知すべきもの（回帰・境界値）。どの種別のテストを選ぶかは[layer-test-selection.md](layer-test-selection.md)の対応表に従う
 - **スキル / テンプレート** — 作業手順・判断の型として毎回効かせるもの
 - **docs/agents/known-failure-patterns.md** — 落とし穴の記録（型化はまだ早いもの）
 - **docs/agents/implementation-patterns.md** — 再利用可能な実装手順
