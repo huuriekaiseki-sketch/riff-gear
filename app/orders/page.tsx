@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { reorderOrder } from './actions'
 import {
   STATUS_LABEL,
   STATUS_COLOR,
@@ -30,36 +31,48 @@ export default async function OrderHistoryPage() {
       <h1 className="text-2xl font-semibold tracking-tight text-foreground">注文履歴</h1>
       <ul className="mt-6 divide-y divide-gray-200 rounded-2xl border border-gray-200 bg-surface shadow-sm dark:divide-gray-800 dark:border-gray-800">
         {orders?.map((order) => (
-          <li key={order.id}>
+          <li
+            key={order.id}
+            className="flex items-center justify-between gap-4 px-6 py-4"
+          >
             <Link
               href={`/orders/${order.id}`}
-              className="flex items-center justify-between gap-4 px-6 py-4 transition-colors hover:bg-gray-50 dark:hover:bg-gray-900"
+              className="flex-1 rounded-lg transition-colors hover:bg-gray-50 dark:hover:bg-gray-900"
             >
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {new Date(order.created_at).toLocaleDateString('ja-JP')}
-                </p>
-                <p className="font-medium text-foreground">
-                  ¥{order.total_cents.toLocaleString()}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {order.status === 'cancelled' ? (
-                    <>{PAYMENT_METHOD_LABEL[order.payment_method] ?? order.payment_method}（キャンセル済みのため支払いステータスは対象外）</>
-                  ) : (
-                    <>
-                      {PAYMENT_METHOD_LABEL[order.payment_method] ?? order.payment_method}
-                      {' ・ '}
-                      {PAYMENT_STATUS_LABEL[order.payment_status] ?? order.payment_status}
-                    </>
-                  )}
-                </p>
-              </div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {new Date(order.created_at).toLocaleDateString('ja-JP')}
+              </p>
+              <p className="font-medium text-foreground">
+                ¥{order.total_cents.toLocaleString()}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {order.status === 'cancelled' ? (
+                  <>{PAYMENT_METHOD_LABEL[order.payment_method] ?? order.payment_method}（キャンセル済みのため支払いステータスは対象外）</>
+                ) : (
+                  <>
+                    {PAYMENT_METHOD_LABEL[order.payment_method] ?? order.payment_method}
+                    {' ・ '}
+                    {PAYMENT_STATUS_LABEL[order.payment_status] ?? order.payment_status}
+                  </>
+                )}
+              </p>
+            </Link>
+            <div className="flex items-center gap-3">
               <span
                 className={`rounded-full px-3 py-1 text-xs font-medium ${STATUS_COLOR[order.status] ?? 'bg-gray-100 text-gray-500'}`}
               >
                 {STATUS_LABEL[order.status] ?? order.status}
               </span>
-            </Link>
+              <form action={reorderOrder}>
+                <input type="hidden" name="orderId" value={order.id} />
+                <button
+                  type="submit"
+                  className="rounded-lg bg-gradient-to-r from-primary to-secondary px-4 py-2 text-sm font-medium text-white shadow-md transition-all hover:opacity-90"
+                >
+                  もう一度買う
+                </button>
+              </form>
+            </div>
           </li>
         ))}
       </ul>
