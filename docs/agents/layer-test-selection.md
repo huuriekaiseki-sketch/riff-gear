@@ -67,7 +67,8 @@ order_items.price_cents_at_order のCHECK制約漏れ（PR #115で後追い修�
 
 1. `aidd-phase2.js` の `TEST_TYPES` で該当キーの `established` を `true` にし、`hint` を実ディレクトリに更新する
 2. この文書の写しを更新する
-3. `scripts/aidd-phase2-workflow.test.mjs` に昇格後の導出ケースを追加する
+3. `scripts/aidd-phase2-workflow.check.mjs` に昇格後の導出ケースを追加する
+   （`.test.mjs` に改名しないこと。vitestのデフォルトincludeに拾われてtestジョブがfailする）
 
 ## 判断がぶれたときの調べ方
 

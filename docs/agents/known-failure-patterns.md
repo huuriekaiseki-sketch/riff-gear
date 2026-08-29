@@ -33,6 +33,7 @@ Sweepエージェントが機械的にチェックする、riff-gearでこれま
 Claude Codeエージェント自身のツール実行・ファイル書き込みに起因する不具合。コードのパターンではなく、エージェントの作業手順で防ぐ性質のもの。
 
 - **`find`/`ls`ではなく`git ls-files <path>`でファイルの既存有無を確認する**: `find`/`ls`の結果が実際のgit管理状態と食い違うことがある。既存ファイルを「新規ファイルだ」と誤認してWriteで全体書き換えすると、正本ドキュメント(例: `docs/agents/quality-loop.md`)を丸ごと消しかねない。既存ファイルへの変更はWriteでなくEditツールを使う(Editは事前のReadを要求するため、未確認ファイルの上書きを構造的に防げる)
+- **vitest非対象のスクリプトに`.test.mjs`/`.test.ts`と命名しない**: [vitest.config.ts](../../vitest.config.ts)は`include`を指定していないため、vitestのデフォルトパターン(`**/*.{test,spec}.?(c|m)[jt]s?(x)`)がリポジトリ全体の`*.test.mjs`等を拾う。素のnodeスクリプト(hooks-test用ハーネス等)をこの命名で置くと、スクリプト自体は正常でも`No test suite found`でtestジョブがfailする(2026-08-29、PR #118の`scripts/aidd-phase2-workflow.test.mjs`で実際に発生し`.check.mjs`へ改名して解消)。hooks-test CIが拾う`scripts/*.test.sh`(シェル)は対象外なので問題ない
 
 ### レビュー・引き継ぎ情報を鵜呑みにした誤診断(2026-08-29、実例あり)
 

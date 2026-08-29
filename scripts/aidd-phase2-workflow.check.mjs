@@ -1,7 +1,9 @@
 // aidd-phase2.js（Workflowスクリプト）の回帰テスト。
 // Workflow実行環境の注入グローバル(agent/parallel/phase/log/args)をスタブし、
 // ワークフロー全体を実行して「テスト選択」の機械導出とプロンプト結線を検証する。
-// 実行: node scripts/aidd-phase2-workflow.test.mjs （scripts/aidd-phase2-workflow.test.sh 経由でCIのhooks-testが常時実行）
+// 実行: node scripts/aidd-phase2-workflow.check.mjs （scripts/aidd-phase2-workflow.test.sh 経由でCIのhooks-testが常時実行）
+// ファイル名が.test.mjsでないのは、vitestのデフォルトinclude(**/*.test.*)に拾われて
+// 「No test suite found」でtestジョブがfailするため。
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
