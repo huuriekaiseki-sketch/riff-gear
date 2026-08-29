@@ -1,6 +1,6 @@
 ---
 name: pr-screenshot
-description: riff-gearのUI変更を、枠線・ラベル・ページ名バナー付きのスクリーンショットとしてPR用に撮影する。撮影(puppeteer-core、ログイン込みで1回だけ)と注釈合成(sharp、ブラウザ不使用で何度でも編集可能)を分離しているため、見た目調整のたびにブラウザ再起動・DBリセット・ログインをやり直す必要がない。Use when UI変更を含むPRでスクリーンショットが必要なとき、「スクショ撮って」「PRに画像入れて」「見た目を確認したい」と言われたとき。
+description: riff-gearのUI変更を、枠線・ラベル・ページ名バナー付きのスクリーンショットとしてPR用・仕様書用に撮影する。撮影(puppeteer-core、ログイン込みで1回だけ)と注釈合成(sharp、ブラウザ不使用で何度でも編集可能)を分離しているため、見た目調整のたびにブラウザ再起動・DBリセット・ログインをやり直す必要がない。実装済みページの撮影に加え、design スキルで作った実装前モック(Artifact URLやローカルhtml)を認証・DB不要で撮影するモード(mock-capture-template.js)も持つ。Use when UI変更を含むPRでスクリーンショットが必要なとき、「スクショ撮って」「PRに画像入れて」「見た目を確認したい」と言われたとき、または仕様書のbefore/after画像や実装前モックのスクショが必要なとき。
 ---
 
 # PR用スクリーンショット撮影
@@ -32,6 +32,15 @@ npm install   # 初回のみ
    - 見た目が気に入るまで`node annotate.js <config.json>`を繰り返す(ブラウザ・DB不使用、高速)
 
 3. `SendUserFile`で`annotated_*.png`を送る。PR本文への貼り付けはユーザーに依頼する
+
+## モック撮影(実装前・認証不要)
+
+仕様書のUI案として、design スキルで作ったArtifact(実装前モック)を撮る場合は、devサーバー起動もログインもDBリセットも不要な軽量版を使う。
+
+1. `scripts/mock-capture-template.js` を `mock-capture.js` としてコピーし、ハイライトしたい要素のセレクタ取得ロジックを書き込む(テンプレート内のコメント参照)
+2. 実行: `TARGET_URL=<Artifact URLまたはfile:///path/to/mock.html> node mock-capture.js`
+3. `raw_*.png` と `rects.json` ができるので、通常フローと同じく `annotate.js` で注釈する
+4. ページ名バナーには「(実装前モック)〇〇」のように、実装前だと分かる表記を入れる(実装後のスクリーンショットと混同させないため)
 
 ## capture-template.jsのパラメータ
 
