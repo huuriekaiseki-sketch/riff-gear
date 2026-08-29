@@ -5,6 +5,14 @@ description: riff-gearのUI変更を、枠線・ラベル・ページ名バナ�
 
 # PR用スクリーンショット撮影
 
+## UI差分があるPRはbefore/after両方が必須(省略禁止)
+
+見た目に差分が出るUI変更を含むPRでは、**変更後(after)のスクショだけでは不十分**。変更前(before)のスクショも必ず添えて、PR単体で「何がどう変わったか」を画像だけで判断できるようにする。after1枚だけでは、初見の人が「これが変更後の状態」としか分からず、差分そのものが伝わらない。
+
+- before: 変更前の状態を`capture-template.js`で撮る(既存ページなら必ず撮る。新規ページの場合はbefore自体が存在しないため省略可)
+- after: 変更後の状態を`capture-template.js`(実装後)または`capture-mock-template.js`(実装前モック)で撮る
+- 1枚の画像内で対比できるなら(例: 同じ一覧に強調対象の行と非対象の行が両方映っている)、それをafter画像として使いつつ、それでも独立したbefore画像は別途用意する。「同じ画像の中で対比できているからbefore不要」と判断しない
+
 ## できないこと(先に把握する)
 
 `gh` CLIにはPR本文への画像アップロード機能がなく、Claude Codeのブラウザ自動化ツールにもファイルアップロード操作がない。したがって**PR本文への貼り付けは人間の手作業になる**。このスキルがやるのは、注釈付きPNGをファイルとして`SendUserFile`で渡すところまで。この制約を回避しようとして時間をかけない。
@@ -32,6 +40,21 @@ npm install   # 初回のみ
    - 見た目が気に入るまで`node annotate.js <config.json>`を繰り返す(ブラウザ・DB不使用、高速)
 
 3. `SendUserFile`で`annotated_*.png`を送る。PR本文への貼り付けはユーザーに依頼する
+
+## 実装前UIモックの撮影(capture-mock-template.js)
+
+実装後のPRスクショとは別に、**実装前のUIモック**(`design`スキルで作ったArtifactやローカルの`.dc.html`)を撮る軽量版がある。ログイン・Supabase Admin API・DBリセットは一切不要(モックは静的ページのため)。
+
+```bash
+cp capture-mock-template.js capture-mock.js
+MOCK_URL=./design-mock/Main.dc.html node capture-mock.js   # ローカルファイル
+# または
+MOCK_URL=https://claude.ai/code/artifact/xxxx node capture-mock.js   # 公開Artifact URL
+```
+
+- `design`スキルの保存機能でプライベート公開したArtifact URLは、このブラウザにログインセッションが無いため開けないことが多い。その場合はローカルの`.dc.html`ファイルを直接指定する(静的な見た目の確認で足りる)
+- `raw_mock.png`ができたら`annotate.js`で注釈する。ページ名バナーには「（実装前モック）〇〇」のように実装前だと分かる表記を入れ、実装後の`annotated_*.png`と混同しないようにする
+- 仕様書(`docs/specs/`)に貼るafter画像として使う。before画像(既存ページの現状)は通常の`capture-template.js`で撮る
 
 ## capture-template.jsのパラメータ
 
