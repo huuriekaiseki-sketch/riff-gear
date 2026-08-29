@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { updateOrderStatus, updatePaymentStatus } from './actions'
 import { PAYMENT_STATUS_LABEL } from '@/lib/order-labels'
 import { checkAndNotifyAbandonedCarts } from '@/lib/cartAbandonment'
+import { isOverdueUnshipped } from '@/lib/orderAlerts'
 
 const PAYMENT_STATUSES = ['pending', 'paid'] as const
 const PAYMENT_STATUS_COLOR: Record<string, string> = {
@@ -69,8 +70,13 @@ export default async function AdminOrdersPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-            {orders?.map((order) => (
-              <tr key={order.id}>
+            {orders?.map((order) => {
+              const overdue = isOverdueUnshipped(order.status, order.created_at)
+              return (
+              <tr
+                key={order.id}
+                className={overdue ? 'bg-danger/10' : undefined}
+              >
                 <td className="px-6 py-4 font-mono text-xs text-gray-500 dark:text-gray-400">
                   {order.id}
                 </td>
@@ -127,7 +133,8 @@ export default async function AdminOrdersPage() {
                   </form>
                 </td>
               </tr>
-            ))}
+              )
+            })}
           </tbody>
         </table>
       </div>
