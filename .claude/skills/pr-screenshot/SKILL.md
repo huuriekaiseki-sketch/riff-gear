@@ -33,6 +33,21 @@ npm install   # 初回のみ
 
 3. `SendUserFile`で`annotated_*.png`を送る。PR本文への貼り付けはユーザーに依頼する
 
+## 実装前UIモックの撮影(capture-mock-template.js)
+
+実装後のPRスクショとは別に、**実装前のUIモック**(`design`スキルで作ったArtifactやローカルの`.dc.html`)を撮る軽量版がある。ログイン・Supabase Admin API・DBリセットは一切不要(モックは静的ページのため)。
+
+```bash
+cp capture-mock-template.js capture-mock.js
+MOCK_URL=./design-mock/Main.dc.html node capture-mock.js   # ローカルファイル
+# または
+MOCK_URL=https://claude.ai/code/artifact/xxxx node capture-mock.js   # 公開Artifact URL
+```
+
+- `design`スキルの保存機能でプライベート公開したArtifact URLは、このブラウザにログインセッションが無いため開けないことが多い。その場合はローカルの`.dc.html`ファイルを直接指定する(静的な見た目の確認で足りる)
+- `raw_mock.png`ができたら`annotate.js`で注釈する。ページ名バナーには「（実装前モック）〇〇」のように実装前だと分かる表記を入れ、実装後の`annotated_*.png`と混同しないようにする
+- 仕様書(`docs/specs/`)に貼るafter画像として使う。before画像(既存ページの現状)は通常の`capture-template.js`で撮る
+
 ## capture-template.jsのパラメータ
 
 環境変数で最低限パラメータ化してある:
