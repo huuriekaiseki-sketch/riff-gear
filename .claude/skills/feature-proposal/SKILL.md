@@ -129,7 +129,7 @@ UI層が含まれる場合の作成手順（省略禁止。開発者は「文字
 
 **Phase2ワークフローを使った場合も**、Role 5のCriticチェックリストは省略しない（integratorのbuild/test確認を鵜呑みにせず、最終的な`git diff`確認は必ず人間相当の目で行う）。ロールバックSQLの要否もPhase2内のdb実装エージェントに同様に指示する。
 
-**UI変更を検知したらpr-screenshotスキルの使用を確認する**: `aidd-phase2`の返り値(`result.uiChange`)は`changedFiles`のパスから`app/**/page.tsx`の変更を機械判定している(推測ではない)。`uiChange.uiChanged`が`true`なら、`uiChange.pagePaths`(App Router規約で変換したURLパス候補)を添えて「UI変更を検知しました。`pr-screenshot`スキルでPR用スクリーンショットを撮りますか？」と開発者に確認する。手動実装フロー(影響層1つ)でUIを変更した場合も同様に確認する(この場合は`app/`配下の`.tsx`を変更したかどうかで自分で判定する)。
+**UI変更を検知したらpr-screenshotスキルの使用を確認する**: `aidd-phase2`の返り値(`result.uiChange`)は`changedFiles`のパスから`app/**/page.tsx`の変更を機械判定している(推測ではない)。`uiChange.uiChanged`が`true`なら、`uiChange.pagePaths`(App Router規約で変換したURLパス候補)を添えて「UI変更を検知しました。`pr-screenshot`スキルでPR用スクリーンショットを撮りますか？」と開発者に確認する。手動実装フロー(影響層1つ)でUIを変更した場合も同様に確認する(この場合は`app/`配下の`.tsx`を変更したかどうかで自分で判定する)。**撮る場合はbefore(変更前)とafter(変更後)の両方を撮る(after1枚だけで済ませない。詳細は`pr-screenshot`スキルの「UI差分があるPRはbefore/after両方が必須」を参照)。**
 
 ### Role 5: Critic（検証・批判）
 

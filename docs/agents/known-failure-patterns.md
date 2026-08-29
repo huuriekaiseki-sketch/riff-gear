@@ -60,3 +60,11 @@ Codexレビューや前セッションの引き継ぎメモが「未実装」「
 **実例**: PR #125で`docs/pr-assets/highlight-unshipped-orders/annotated_orders.png`をコミットし、PR本文に相対パスで埋め込んだが、GitHub上で画像が表示されなかった。`https://raw.githubusercontent.com/<owner>/<repo>/<commit-sha>/<path>`という絶対URL(pushしたコミットのSHAを使う)に書き換えたところ正しく表示された。
 
 教訓: **PR本文に画像を埋め込む際は、必ず`raw.githubusercontent.com`形式の絶対URLを使う**。画像をコミットした後、そのコミットのSHA(`git rev-parse HEAD`)を使ってURLを組み立てる。`gh pr create`直後は必ずブラウザで実際にレンダリングされているか目視確認し、リンクのままなら`gh pr edit --body-file`で修正する。
+
+### UI差分のあるPRにafter画像しか貼らず、before画像を省略した(2026-08-29、実例あり)
+
+PR #125(未発送のまま3日超過した注文の強調表示)で、変更後(強調表示された状態)のスクショだけをPR本文に貼り、変更前(強調表示が無い通常の注文一覧)のスクショを貼らなかった。after画像1枚だけでは、初見のレビュアーが「これが変更後の状態」としか分からず、何がどう変わったのかが画像だけでは伝わらない。1枚の画像内に対象行と非対象行が両方映っていて対比できるように見えても、それは「afterの中の部分的な対比」であって「before全体との対比」ではないため、独立したbefore画像の代わりにはならない。
+
+**背景**: この失敗は、ユーザーから3回連続で類似の指摘を受けて初めて気づいた(1回目: 仕様確認をAskUserQuestionの回答で済ませて実装に直行、2回目: それをknown-failure-patterns.mdに書かず個人メモリにだけ書いた、3回目: 本件でbefore画像の欠落を指摘されてもなお、最初は個人メモリにしか書かずdocs/agents/known-failure-patterns.mdへの追記を怠った)。「指摘されたら直す」だけでは同じ会話内で何度も同じ種類のミスが起きる。
+
+教訓: **UI差分のあるPRは、before(変更前)とafter(変更後)の両方のスクショを必ず貼る**(`pr-screenshot`スキルの「UI差分があるPRはbefore/after両方が必須」を参照)。加えて、**ユーザーから指摘を受けたら、対応が終わった直後に「これは`docs/agents/known-failure-patterns.md`に書くべきミスか」を必ず自問する**(個人メモリへの記録だけで済ませない。個人メモリは自分専用でセッションを跨いで思い出すためのもの、`known-failure-patterns.md`はこのリポジトリで動く全AIエージェント共通の正本であり、両方に書く必要がある場面では両方に書く)。
