@@ -1,7 +1,6 @@
 // PR用スクリーンショットの注釈エンジン(汎用・riff-gear非依存)。
-// 生PNG + 要素座標(rect)から、枠線・ラベル・ページ名バナーを合成した
-// PNGを作る。ブラウザもDBも使わないため、見た目が気に入るまで
-// 何度でも高速に(1秒未満で)再実行できる。
+// 生PNG + 要素座標(rect)から、枠線・ラベルを合成したPNGを作る。
+// ブラウザもDBも使わないため、見た目が気に入るまで何度でも高速に(1秒未満で)再実行できる。
 //
 // 使い方(モジュールとして):
 //   const { buildAnnotated } = require('./annotate.js');
@@ -9,7 +8,6 @@
 //     rawPngPath: 'raw_created.png',
 //     outPngPath: 'annotated_created.png',
 //     viewport: { width: 1280, height: 800 },
-//     page: { title: '管理画面 - クーポン管理', path: '/admin/coupons' },
 //     boxes: [
 //       { rect: { x, y, width, height }, color: '#e11d48', text: '① 説明' },
 //     ],
@@ -18,6 +16,11 @@
 // boxes[].rect は撮影時にブラウザの実ビューポート座標系(getBoundingClientRect)で
 // 取得したものをそのまま渡す。ラベルは常に対象要素の直下に置かれ、
 // 重なる場合は自動的に上へ積み上げる。
+//
+// page(省略可): { title, path } を渡すと画像上部に小さいページ名バナーを付ける
+// (旧仕様、後方互換のために残している)。デフォルトでは付けない。PRの見出しに
+// 「変更前(app/orders/page.tsx)」のようにパスを明記する運用に切り替えたため、
+// 通常はpageを渡さなくてよい。
 const fs = require('fs');
 const sharp = require('sharp');
 
@@ -72,14 +75,20 @@ const BANNER_HEIGHT = 40;
 async function buildAnnotated({ rawPngPath, outPngPath, viewport, page, boxes }) {
   const { width, height } = viewport;
   const svgParts = [];
+  // ページ名バナーは省略可能(pageを渡さなければ描かない)。画像内の小さい文字より、
+  // PR本文の見出しに「変更前(パス)」のようにパスを明記する運用に切り替えたため、
+  // デフォルトでは付けない。
+  const bannerHeight = page ? BANNER_HEIGHT : 0;
 
-  // ページ名バナー: 元のUIと絶対に重ならないよう、画像の高さ自体を
-  // bannerHeight分拡張してその領域に描く。
-  svgParts.push(`
-    <rect x="0" y="0" width="${width}" height="${BANNER_HEIGHT}" fill="#111827" />
-    <text x="16" y="${BANNER_HEIGHT / 2 + 5}" font-family="sans-serif" font-size="14" font-weight="bold" fill="#fff">${esc(page.title)}</text>
-    <text x="${width - 16}" y="${BANNER_HEIGHT / 2 + 5}" font-family="monospace" font-size="13" fill="#9ca3af" text-anchor="end">${esc(page.path)}</text>
-  `);
+  if (page) {
+    // ページ名バナー: 元のUIと絶対に重ならないよう、画像の高さ自体を
+    // bannerHeight分拡張してその領域に描く。
+    svgParts.push(`
+      <rect x="0" y="0" width="${width}" height="${BANNER_HEIGHT}" fill="#111827" />
+      <text x="16" y="${BANNER_HEIGHT / 2 + 5}" font-family="sans-serif" font-size="14" font-weight="bold" fill="#fff">${esc(page.title)}</text>
+      <text x="${width - 16}" y="${BANNER_HEIGHT / 2 + 5}" font-family="monospace" font-size="13" fill="#9ca3af" text-anchor="end">${esc(page.path)}</text>
+    `);
+  }
 
   // ラベルは常に対象要素の"直下"に置く(上に置くと見出し等と衝突しやすいため)。
   const labelItems = boxes.map((b) => {
@@ -87,7 +96,7 @@ async function buildAnnotated({ rawPngPath, outPngPath, viewport, page, boxes })
     return {
       text: b.text,
       left: Math.max(4, Math.min(b.rect.x, width - approxWidth - 4)),
-      top: b.rect.y + b.rect.height + 8 + BANNER_HEIGHT,
+      top: b.rect.y + b.rect.height + 8 + bannerHeight,
       approxWidth,
       color: b.color,
     };
@@ -95,19 +104,19 @@ async function buildAnnotated({ rawPngPath, outPngPath, viewport, page, boxes })
   const placed = placeLabels(labelItems);
 
   for (const b of boxes) {
-    const shifted = { ...b.rect, y: b.rect.y + BANNER_HEIGHT };
+    const shifted = { ...b.rect, y: b.rect.y + bannerHeight };
     svgParts.push(frameRect(shifted, b.color, b.padding));
   }
   for (const l of placed) {
     svgParts.push(labelBox(l.text, l.left, l.top, l.color));
   }
 
-  const svg = `<svg width="${width}" height="${height + BANNER_HEIGHT}" xmlns="http://www.w3.org/2000/svg">${svgParts.join('')}</svg>`;
+  const svg = `<svg width="${width}" height="${height + bannerHeight}" xmlns="http://www.w3.org/2000/svg">${svgParts.join('')}</svg>`;
 
   const base = await sharp({
-    create: { width, height: height + BANNER_HEIGHT, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } },
+    create: { width, height: height + bannerHeight, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } },
   })
-    .composite([{ input: rawPngPath, top: BANNER_HEIGHT, left: 0 }])
+    .composite([{ input: rawPngPath, top: bannerHeight, left: 0 }])
     .png()
     .toBuffer();
 

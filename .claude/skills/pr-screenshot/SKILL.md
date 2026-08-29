@@ -1,6 +1,6 @@
 ---
 name: pr-screenshot
-description: riff-gearのUI変更を、枠線・ラベル・ページ名バナー付きのスクリーンショットとしてPR用に撮影する。撮影(puppeteer-core、ログイン込みで1回だけ)と注釈合成(sharp、ブラウザ不使用で何度でも編集可能)を分離しているため、見た目調整のたびにブラウザ再起動・DBリセット・ログインをやり直す必要がない。Use when UI変更を含むPRでスクリーンショットが必要なとき、「スクショ撮って」「PRに画像入れて」「見た目を確認したい」と言われたとき。
+description: riff-gearのUI変更を、枠線・ラベル付きのスクリーンショットとしてPR用に撮影する。撮影(puppeteer-core、ログイン込みで1回だけ)と注釈合成(sharp、ブラウザ不使用で何度でも編集可能)を分離しているため、見た目調整のたびにブラウザ再起動・DBリセット・ログインをやり直す必要がない。Use when UI変更を含むPRでスクリーンショットが必要なとき、「スクショ撮って」「PRに画像入れて」「見た目を確認したい」と言われたとき。
 ---
 
 # PR用スクリーンショット撮影
@@ -12,6 +12,7 @@ description: riff-gearのUI変更を、枠線・ラベル・ページ名バナ�
 - before: 変更前の状態を`capture-template.js`で撮る(既存ページなら必ず撮る。新規ページの場合はbefore自体が存在しないため省略可)
 - after: 変更後の状態を`capture-template.js`(実装後)または`capture-mock-template.js`(実装前モック)で撮る
 - 1枚の画像内で対比できるなら(例: 同じ一覧に強調対象の行と非対象の行が両方映っている)、それをafter画像として使いつつ、それでも独立したbefore画像は別途用意する。「同じ画像の中で対比できているからbefore不要」と判断しない
+- PR本文では画像の見出しに対象パスを明記する: `### 変更前 (app/orders/page.tsx)` / `### 変更後 (app/orders/page.tsx)`。画像自体にページ名バナーは焼き込まない(下記参照)
 
 ## できないこと(先に把握する)
 
@@ -36,7 +37,7 @@ npm install   # 初回のみ
    - `raw_*.png` と `rects.json` ができる
 
 2. **注釈フェーズ(何度でも編集可)**
-   - `boxes`(対象rect・色・ラベル文言)と`page`(タイトル・パス)を指定する小さな呼び出しスクリプト、またはJSON設定ファイルを書き、`annotate.js`の`buildAnnotated()`を呼ぶ
+   - `boxes`(対象rect・色・ラベル文言)を指定する小さな呼び出しスクリプト、またはJSON設定ファイルを書き、`annotate.js`の`buildAnnotated()`を呼ぶ(`page`は省略してよい。ページ名バナーは付けない運用にしたため)
    - 見た目が気に入るまで`node annotate.js <config.json>`を繰り返す(ブラウザ・DB不使用、高速)
 
 3. `SendUserFile`で`annotated_*.png`を送る。PR本文への貼り付けはユーザーに依頼する
@@ -52,8 +53,8 @@ MOCK_URL=./design-mock/Main.dc.html node capture-mock.js   # ローカルファ�
 
 - **`design`スキルのArtifact URL(`claude.ai/code/artifact/...`)は基本的に開けない**（実機で確認済み）。designスキルが公開する前にローカルへ生成する完全なhtmlファイル(`seed-canvas.mjs --out`で指定したパス)を`MOCK_URL`に指定すること。Artifact URLは非公開ページのため、ログインセッションを持たないこのスクリプトの起動先ブラウザからは「Page not found」になる
 - **design skillのartboardはsandboxed iframe内でレンダリングされる**。要素のハイライト用にrectを取る場合は、`capture-mock-template.js`内のコメントにある通り`iframe`の`contentFrame()`経由で取得し、`iframe`自体の位置を加算して絶対座標に変換すること。トップレベルの`document.querySelector()`では見つからない。iframeのマウントには数秒かかるため、`goto`後は最低5〜6秒sleepしてから撮影する
-- `raw_mock.png`ができたら`annotate.js`で注釈する。ページ名バナーには「（実装前モック）〇〇」のように実装前だと分かる表記を入れ、実装後の`annotated_*.png`と混同しないようにする
-- 仕様書(`docs/specs/`)に貼るafter画像として使う。before画像(既存ページの現状)は通常の`capture-template.js`で撮る
+- `raw_mock.png`ができたら`annotate.js`で注釈する。ページ名バナーは付けない。実装前モックだと分かるようにしたい場合は、貼り付け先(PR本文・SPEC.md)の見出し側に「変更後(実装前モック、対象: /orders)」のように明記する
+- 仕様書(`docs/spec/<機能名>/SPEC.md`)に貼るafter画像として使う。before画像(既存ページの現状)は通常の`capture-template.js`で撮る
 
 ## capture-template.jsのパラメータ
 
@@ -77,7 +78,6 @@ await buildAnnotated({
   rawPngPath: 'raw_created.png',
   outPngPath: 'annotated_created.png',
   viewport: { width: 1280, height: 800 },       // capture時のdefaultViewportと一致させる
-  page: { title: '管理画面 - クーポン管理', path: '/admin/coupons' },
   boxes: [
     { rect: { x, y, width, height }, color: '#e11d48', text: '① 新規追加: クーポン管理ページ' },
   ],
@@ -87,7 +87,7 @@ await buildAnnotated({
 - `rect`は撮影時にブラウザの実ビューポート座標系(`getBoundingClientRect()`)で取得した値をそのまま渡す。座標変換は不要
 - ラベルは対象要素の**直下**に自動配置され、重なる場合は自動的に上へ積み上げる。矢印は使わない(要素を直接囲む枠線の方がズレようがなく確実)
 - テーブルの行(`tr`)を囲みたい場合、`outline`が行全体として視認しづらいことがある。その場合は行の代わりに各セル(`td`)のrectを個別に渡すか、行の外側にひとまわり大きいdivを想定してrectを渡す
-- ページ名バナーは画像の高さを拡張して描画するため、元のUIと重ならない
+- `page: { title, path }`は省略可能な旧オプション(画像上部にページ名バナーを焼き込む)。デフォルトでは付けない。対象パスはPR本文・SPEC.mdの見出しに書く運用にしたため、通常は指定しない
 
 ## 完了したら
 
