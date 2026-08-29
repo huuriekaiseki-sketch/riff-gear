@@ -1,6 +1,6 @@
 ---
 name: pr-screenshot
-description: riff-gearのUI変更を、枠線・ラベル・ページ名バナー付きのスクリーンショットとしてPR用・仕様書用に撮影する。撮影(puppeteer-core、ログイン込みで1回だけ)と注釈合成(sharp、ブラウザ不使用で何度でも編集可能)を分離しているため、見た目調整のたびにブラウザ再起動・DBリセット・ログインをやり直す必要がない。実装済みページの撮影に加え、design スキルで作った実装前モック(Artifact URLやローカルhtml)を認証・DB不要で撮影するモード(mock-capture-template.js)も持つ。Use when UI変更を含むPRでスクリーンショットが必要なとき、「スクショ撮って」「PRに画像入れて」「見た目を確認したい」と言われたとき、または仕様書のbefore/after画像や実装前モックのスクショが必要なとき。
+description: riff-gearのUI変更を、枠線・ラベル・ページ名バナー付きのスクリーンショットとしてPR用・仕様書用に撮影する。撮影(puppeteer-core、ログイン込みで1回だけ)と注釈合成(sharp、ブラウザ不使用で何度でも編集可能)を分離しているため、見た目調整のたびにブラウザ再起動・DBリセット・ログインをやり直す必要がない。実装済みページの撮影に加え、design スキルで作った実装前モック(公開前のローカルhtml。Artifact URLは非公開ページのため未対応)を認証・DB不要で撮影するモード(mock-capture-template.js)も持つ。Use when UI変更を含むPRでスクリーンショットが必要なとき、「スクショ撮って」「PRに画像入れて」「見た目を確認したい」と言われたとき、または仕様書のbefore/after画像や実装前モックのスクショが必要なとき。
 ---
 
 # PR用スクリーンショット撮影
@@ -35,12 +35,17 @@ npm install   # 初回のみ
 
 ## モック撮影(実装前・認証不要)
 
-仕様書のUI案として、design スキルで作ったArtifact(実装前モック)を撮る場合は、devサーバー起動もログインもDBリセットも不要な軽量版を使う。
+仕様書のUI案として、design スキルで作ったモック(実装前モック)を撮る場合は、devサーバー起動もログインもDBリセットも不要な軽量版を使う。
 
 1. `scripts/mock-capture-template.js` を `mock-capture.js` としてコピーし、ハイライトしたい要素のセレクタ取得ロジックを書き込む(テンプレート内のコメント参照)
-2. 実行: `TARGET_URL=<Artifact URLまたはfile:///path/to/mock.html> node mock-capture.js`
+2. 実行: `TARGET_URL=file:///path/to/design-seed-output.html node mock-capture.js`(下記の注意を参照。**Artifact URLは指定しない**)
 3. `raw_*.png` と `rects.json` ができるので、通常フローと同じく `annotate.js` で注釈する
 4. ページ名バナーには「(実装前モック)〇〇」のように、実装前だと分かる表記を入れる(実装後のスクリーンショットと混同させないため)
+
+**重要な注意点(実運用で確認済み):**
+
+- **`TARGET_URL`にはdesignスキルが公開したArtifact URL(`claude.ai/code/artifact/...`)を指定してはいけない**。Artifactは非公開ページのため、未ログインのpuppeteerで開くと「Page not found」になる。designスキルは公開前にローカルへ完全なhtmlファイル(`seed-canvas.mjs --out`で指定したパス)を生成しているので、そのローカルファイルを`file:///絶対パス/...`の形で指定する
+- **Design Componentsのartboardはsandboxed iframe内でレンダリングされる**。要素のrectを取るには`page.evaluate()`ではなく、`iframe`要素の`contentFrame()`から得たフレームに対してevaluateし、`iframe`自体のメインページ上での位置(`boundingBox()`)を加算して絶対座標に変換する必要がある(テンプレート内のコメントにサンプルコードあり)。iframeのマウントには数秒かかるため、`goto`後は最低5〜6秒sleepしてから撮影する
 
 ## capture-template.jsのパラメータ
 

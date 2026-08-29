@@ -7,14 +7,27 @@
 // このファイルはコピーして対象モック用に書き換えて使う「テンプレート」であり、
 // 汎用モジュールではない。ハイライトしたい要素のセレクタはモックごとに変わるため。
 //
+// 【重要】designスキルのArtifact URL(claude.ai/code/artifact/...)は非公開ページのため、
+// 未ログインのpuppeteerでは開けず「Page not found」になる(実例で確認済み)。
+// designスキルは公開前に、ローカルにseed済みの完全なhtmlファイル(seed-canvas.mjsの
+// --out で指定したパス)を生成している。TARGET_URLにはArtifact URLではなく、
+// そのローカルファイルを file:///絶対パス/xxx.html の形で指定すること。
+//
+// 【重要】Design Componentsのartboardはsandboxed iframe内でレンダリングされる。
+// そのため要素のrectを取るには、通常のpage.evaluate()ではなく
+// page.$('iframe').then(h => h.contentFrame()) で取得したフレームに対して
+// evaluate()する必要がある(下記の書き換え例を参照)。またiframe自体のマウントに
+// 数秒かかるため、goto後は最低5〜6秒程度sleepしてからスクリーンショットを撮ること。
+//
 // 環境変数:
-//   TARGET_URL  例: https://claude.site/artifacts/xxxx または file:///path/to/mock.html (必須)
+//   TARGET_URL  例: file:///path/to/design/seed-output.html (必須。design skillのローカルseed出力、
+//               またはそれ以外の静的ローカルhtml)
 //   CHROME_PATH システムのChrome実行ファイルパス(省略時 macOSデフォルト)
 //
 // 使い方:
 //   1. このファイルを同じディレクトリに mock-capture.js としてコピーする
 //   2. 下の「ここを対象モックに合わせて書き換える」ブロックを編集する
-//   3. TARGET_URL=<モックのURL> node mock-capture.js
+//   3. TARGET_URL=<ローカルhtmlファイルのfile://パス> node mock-capture.js
 //   4. raw_*.png と rects.json ができる。annotate.jsで注釈を合成する(何度でも編集可)
 //      ページ名バナーには「(実装前モック)」等、実装前だと分かる表記を入れること
 const fs = require('fs');
@@ -44,15 +57,21 @@ function rectOf(el) {
   const page = await browser.newPage();
 
   await page.goto(TARGET_URL, { waitUntil: 'networkidle0' });
+  await sleep(6000); // design skillのartboardがiframe内でマウントされるのを待つ
 
   // ============================================================
   // ここを対象モックに合わせて書き換える
   // ============================================================
   //
-  // 例(クーポン作成モックの場合):
+  // 例(design skillで作ったモックの場合。artboardはsandboxed iframe内にあるため、
+  // 要素のrectはiframeのcontentFrame()経由で取得する):
   //
   // await page.screenshot({ path: path.join(OUT_DIR, 'raw_mock.png') });
-  // const rects = await page.evaluate(() => {
+  //
+  // const iframeHandle = await page.$('iframe');
+  // const iframeBox = await iframeHandle.boundingBox(); // メインページ上でのiframeの位置
+  // const frame = await iframeHandle.contentFrame();
+  // const rectsInFrame = await frame.evaluate(() => {
   //   const btn = document.querySelector('[data-mock="create-button"]');
   //   const row = document.querySelector('[data-mock="new-row"]');
   //   const r1 = btn.getBoundingClientRect();
@@ -62,11 +81,21 @@ function rectOf(el) {
   //     newRow: { x: r2.x, y: r2.y, width: r2.width, height: r2.height },
   //   };
   // });
+  // // iframe内座標 + iframe自体のメインページ上でのオフセットを足して絶対座標にする
+  // const rects = Object.fromEntries(
+  //   Object.entries(rectsInFrame).map(([key, r]) => [
+  //     key,
+  //     { x: r.x + iframeBox.x, y: r.y + iframeBox.y, width: r.width, height: r.height },
+  //   ])
+  // );
   //
   // fs.writeFileSync(
   //   path.join(OUT_DIR, 'rects.json'),
   //   JSON.stringify({ viewport, mock: rects }, null, 2)
   // );
+  //
+  // design skill以外の、iframeを使わないシンプルな静的htmlの場合は
+  // page.evaluate()をそのまま使ってよい(iframe座標変換は不要)。
   // ============================================================
 
   await browser.close();
