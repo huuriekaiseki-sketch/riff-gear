@@ -26,7 +26,7 @@ jobs:
     outputs:
       code: ${{ steps.filter.outputs.code }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - id: filter
@@ -50,7 +50,7 @@ jobs:
   hooks-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # WHY: .claude/settings.jsonから呼ばれるhookスクリプト(scripts/check-*.sh等)には
       # 個別の回帰テスト(scripts/*.test.sh)を用意している。テストされないまま放置すると
       # 劣化に気づけない(issue #57・#58・#59・#60はレビューで見つかったが、CIには
@@ -89,7 +89,7 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # WHY: 並行して作業する複数PRが同じマイグレーション連番を選んでしまい、
       # supabase db resetがschema_migrationsの主キー重複で失敗する事故が2度起きた(issue #43)。
