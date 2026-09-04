@@ -65,7 +65,9 @@ MOCK_URL=./design-mock/Main.dc.html node capture-mock.js   # ローカルファ�
 // scripts/capture-mock-<機能名>.js として置く(使い捨て。.gitignore済み)
 const { openMock } = require('./mock-capture.js');
 (async () => {
-  const m = await openMock('/abs/path/to/seeded.html', { artboardIndex: 1, outDir: __dirname });
+  // readySelector: artboard内で「描画完了」とみなす要素。指定しないと "Loading artboard…" の
+  // プレースホルダを撮ってしまうことがある(実例あり)。撮りたい要素のセレクタを必ず渡す
+  const m = await openMock('/abs/path/to/seeded.html', { artboardIndex: 1, outDir: __dirname, readySelector: 'table' });
   console.log('iframeCount =', m.iframeCount);   // 期待したartboard数か必ず確認する
   await m.shoot('raw_idle');                      // 通常
   await m.clickText('削除');                       // frame内のテキストでクリック(同文言が複数なら {nth})
@@ -80,7 +82,8 @@ const { openMock } = require('./mock-capture.js');
 - `openMock(path, { artboardIndex, outDir, viewport })`は`{ frame, shoot, clickText, rect, writeRects, sleep, iframeCount, close }`を返す。`frame`はpuppeteerの`Frame`なので、`clickText`で足りない操作は`frame.type()`等を直接使ってよい
 - クリック・待機の組み立てはモックごとに違うので、都度短いスクリプトを書く。実装で使うテストコードではなく、**実装前モック撮影のためだけの使い捨て**でよい
 - **Before/Afterを1キャンバスに並べた場合(iframeが複数)は要注意**: DOM順は`canvas.json`のartboards配列の順と一致するとは限らない。`artboardIndex`(0始まり)で対象を明示し、`shoot()`の画像を**必ず目視確認**してから使う(狙いと違うartboardを撮っていても気づかず進めてしまった実例がV組まい側であった。詳細は[known-failure-patterns.md](../../../docs/agents/known-failure-patterns.md))
-- `rect()`はiframeのオフセットを加算した絶対座標を返すので、そのまま`annotate.js`の`boxes[].rect`に渡せる(座標変換は不要)
+- `rect()`は`shoot()`の画像座標系(iframe内の`getBoundingClientRect`そのまま)を返し、`writeRects()`の`viewport`は画像サイズになるので、そのまま`annotate.js`に渡せる(座標変換は不要。メインページ座標に直すと枠がずれる)
+- `clickText()`はマウス座標ではなくDOMの`click()`で押す。キャンバスはartboardをCSS transformで縮小表示するため、座標クリックだとハンドラが発火しないことがある(実例あり)。大きく撮りたいときは`canvas.json`の`launch`を`{"view":"focused","file":"Main.dc.html"}`にした撮影専用のシードを別途作ると、artboardが等倍で撮れる(公開用のcanvas表示はそのまま)
 - `designスキル`のArtifact URLは開けない(上記と同じ理由)。`seed-canvas.mjs --out`で生成したローカルhtmlを渡す
 - 動作確認済みの環境: puppeteer-core 25.9 + macOS Chrome、`sandbox="allow-scripts"`のiframe内クリック・要素取得・クリップ撮影(2026-09-04)
 
