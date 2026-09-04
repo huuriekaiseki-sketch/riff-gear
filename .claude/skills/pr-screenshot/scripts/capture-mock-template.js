@@ -1,6 +1,8 @@
 // 実装前UIモックの軽量撮影テンプレート(認証不要・DB不使用)。
 // designスキルで作ったArtifact URL、またはローカルの.dc.html/.htmlファイルを
 // そのまま撮影する。capture-template.js(ログイン+Supabase Admin API前提)とは別物。
+// クリックで状態が変わるモックを状態ごとに撮りたい場合は、こちらではなく
+// mock-capture.js の openMock() を使う(SKILL.md「インタラクティブモックの状態撮影」参照)。
 //
 // 【重要】design skillのartboard(.dc.html)はsandboxed iframe内でレンダリングされる。
 // そのため要素のrectを取るには、通常のpage.evaluate()ではなく、iframe要素の

@@ -61,6 +61,14 @@ Codexレビューや前セッションの引き継ぎメモが「未実装」「
 
 教訓: **PR本文に画像を埋め込む際は、必ず`raw.githubusercontent.com`形式の絶対URLを使う**。画像をコミットした後、そのコミットのSHA(`git rev-parse HEAD`)を使ってURLを組み立てる。`gh pr create`直後は必ずブラウザで実際にレンダリングされているか目視確認し、リンクのままなら`gh pr edit --body-file`で修正する。
 
+### 複数artboardのモック撮影で、狙いと違うartboardを撮ったまま気づかなかった(2026-09-04、medical-inventory-vkumaiで実例あり)
+
+`design`スキルでBefore/Afterを1つのキャンバス(`canvas.json`)に並べると、生成されたhtml内にsandboxed iframeが複数できる。**iframeのDOM順は`canvas.json`の`artboards`配列の順と一致するとは限らない**。撮影ヘルパーが「最初のiframe」を黙って掴む実装だと、After(`Main.dc.html`)を撮ったつもりでBefore側を撮っており、画像を見ても「ボタンがある一覧」なので違和感が無く、そのまま仕様書に貼りかけた。
+
+**実例**: V組まい(medical-inventory-vkumai)で製品一覧の削除フローをBefore/Afterで並べた際に発生。`openMock()`が`.first()`のiframeを掴んでいた。riff-gearへ移植した`pr-screenshot/scripts/mock-capture.js`は、この対策として`artboardIndex`を呼び出し側に明示させ、`iframeCount`を返す設計にしてある。
+
+教訓: **複数artboardを撮るときは`artboardIndex`を明示し、`iframeCount`が期待値か確認し、撮れた画像を必ず目視で確認してから使う**。「ヘルパーが返したパス＝正しい画像」と信用しない。関連して、インタラクティブモックは「作った」だけでは動作確認になっておらず、実際にクリックして状態が変わることを撮影で確かめてから仕様書に貼る(`feature-proposal`Role 3の提示前セルフチェック)。
+
 ### UI差分のあるPRにafter画像しか貼らず、before画像を省略した(2026-08-29、実例あり)
 
 PR #125(未発送のまま3日超過した注文の強調表示)で、変更後(強調表示された状態)のスクショだけをPR本文に貼り、変更前(強調表示が無い通常の注文一覧)のスクショを貼らなかった。after画像1枚だけでは、初見のレビュアーが「これが変更後の状態」としか分からず、何がどう変わったのかが画像だけでは伝わらない。1枚の画像内に対象行と非対象行が両方映っていて対比できるように見えても、それは「afterの中の部分的な対比」であって「before全体との対比」ではないため、独立したbefore画像の代わりにはならない。
