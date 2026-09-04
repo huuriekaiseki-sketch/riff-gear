@@ -1,0 +1,93 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; font-family: Inter, system-ui, -apple-system, Arial, sans-serif; background: #ffffff; color: #111827; -webkit-font-smoothing: antialiased; }
+    a { color: #3b82f6; } a:hover { color: #2563eb; }
+    select { font: inherit; }
+  </style>
+</helmet>
+<div style="width: 1152px; padding: 40px 24px; box-sizing: border-box; background: #ffffff;">
+  <h1 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 600; letter-spacing: -0.025em; color: #111827;">全注文管理</h1>
+  <p style="margin: 8px 0 0; font-size: 13px; color: #6b7280;">現状: 「更新」を押しても、サーバー処理が終わるまで何のフィードバックも無い（連打できる）</p>
+  <div style="margin-top: 24px; overflow: hidden; border-radius: 16px; border: 1px solid #e5e7eb; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+      <thead>
+        <tr style="border-bottom: 1px solid #e5e7eb; font-size: 12px; text-transform: uppercase; letter-spacing: 0.025em; color: #6b7280;">
+          <th style="padding: 12px 24px; font-weight: 500;">注文ID</th>
+          <th style="padding: 12px 24px; font-weight: 500;">合計</th>
+          <th style="padding: 12px 24px; font-weight: 500;">ステータス</th>
+          <th style="padding: 12px 24px; font-weight: 500;">支払い</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom: 1px solid #e5e7eb;">
+          <td style="padding: 16px 24px; font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: #6b7280;">a1f3…9c02</td>
+          <td style="padding: 16px 24px; font-weight: 500; color: #111827;">¥42,800</td>
+          <td style="padding: 16px 24px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <select style="border: 0; border-radius: 9999px; padding: 4px 12px; font-size: 12px; font-weight: 500; background: rgba(139,92,246,0.10); color: #8b5cf6;">
+                <option>注文受付</option><option>発送準備</option><option>発送済み</option><option>キャンセル</option>
+              </select>
+              <button type="button" style="border: 0; border-radius: 9999px; background: #3b82f6; color: #ffffff; padding: 4px 12px; font-size: 12px; font-weight: 500; cursor: pointer;">更新</button>
+            </div>
+          </td>
+          <td style="padding: 16px 24px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <select style="border: 0; border-radius: 9999px; padding: 4px 12px; font-size: 12px; font-weight: 500; background: rgba(217,119,6,0.10); color: #d97706;">
+                <option>未入金</option><option>入金済み</option>
+              </select>
+              <button type="button" style="border: 0; border-radius: 9999px; background: #3b82f6; color: #ffffff; padding: 4px 12px; font-size: 12px; font-weight: 500; cursor: pointer;">更新</button>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 16px 24px; font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: #6b7280;">7be0…41aa</td>
+          <td style="padding: 16px 24px; font-weight: 500; color: #111827;">¥12,300</td>
+          <td style="padding: 16px 24px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <select style="border: 0; border-radius: 9999px; padding: 4px 12px; font-size: 12px; font-weight: 500; background: rgba(22,163,74,0.10); color: #16a34a;">
+                <option>発送済み</option><option>注文受付</option><option>発送準備</option><option>キャンセル</option>
+              </select>
+              <button type="button" style="border: 0; border-radius: 9999px; background: #3b82f6; color: #ffffff; padding: 4px 12px; font-size: 12px; font-weight: 500; cursor: pointer;">更新</button>
+            </div>
+          </td>
+          <td style="padding: 16px 24px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <select style="border: 0; border-radius: 9999px; padding: 4px 12px; font-size: 12px; font-weight: 500; background: rgba(22,163,74,0.10); color: #16a34a;">
+                <option>入金済み</option><option>未入金</option>
+              </select>
+              <button type="button" style="border: 0; border-radius: 9999px; background: #3b82f6; color: #ffffff; padding: 4px 12px; font-size: 12px; font-weight: 500; cursor: pointer;">更新</button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 style="margin: 40px 0 0; font-size: 18px; line-height: 28px; font-weight: 600; color: #111827;">カート（アイコンボタンの例）</h2>
+  <div style="margin-top: 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-radius: 16px; border: 1px solid #e5e7eb; background: #ffffff; padding: 16px 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+    <div>
+      <p style="margin: 0; font-weight: 500; color: #111827;">Fender Player Stratocaster</p>
+      <p style="margin: 4px 0 0; font-size: 14px; color: #6b7280;">¥85,600</p>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="display: flex; align-items: center; gap: 4px; border-radius: 9999px; border: 1px solid #d1d5db;">
+        <button type="button" style="height: 32px; width: 32px; border: 0; background: transparent; color: #4b5563; font-size: 16px; cursor: pointer;">−</button>
+        <span style="width: 24px; text-align: center; font-size: 14px; font-weight: 500; color: #111827;">1</span>
+        <button type="button" style="height: 32px; width: 32px; border: 0; background: transparent; color: #4b5563; font-size: 16px; cursor: pointer;">＋</button>
+      </div>
+      <button type="button" style="border-radius: 9999px; border: 1px solid #d1d5db; background: transparent; padding: 4px 12px; font-size: 14px; font-weight: 500; color: #4b5563; cursor: pointer;">削除</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

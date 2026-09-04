@@ -1,0 +1,7 @@
+{
+  "artboards": [
+    { "file": "Before.dc.html", "title": "Before (現状)", "x": 0, "y": 0, "w": 1152, "h": 560 },
+    { "file": "Main.dc.html", "title": "After (変更後・クリックで動く)", "x": 1232, "y": 0, "w": 1152, "h": 560, "is_interactive": true }
+  ],
+  "launch": { "view": "canvas" }
+}
