@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createProduct, updateProduct } from './actions'
+import SubmitButton from '@/app/components/SubmitButton'
 
 type ProductRow = {
   id: string
@@ -112,12 +113,9 @@ export default async function AdminProductsPage() {
             会員限定商品にする
           </label>
           <div className="sm:col-span-2">
-            <button
-              type="submit"
-              className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
-            >
+            <SubmitButton className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60">
               商品を追加
-            </button>
+            </SubmitButton>
           </div>
         </form>
       </section>
@@ -195,12 +193,12 @@ export default async function AdminProductsPage() {
                       placeholder="未設定"
                       className="w-24 rounded-lg border border-gray-300 bg-transparent px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-700"
                     />
-                    <button
-                      type="submit"
-                      className="rounded-full bg-primary px-3 py-1 text-xs font-medium text-white transition-opacity hover:opacity-90"
+                    <SubmitButton
+                      spinnerSize="sm"
+                      className="rounded-full bg-primary px-3 py-1 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60"
                     >
                       更新
-                    </button>
+                    </SubmitButton>
                   </form>
                 </td>
               </tr>

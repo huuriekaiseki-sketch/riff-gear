@@ -4,6 +4,7 @@ import { removeFromCart, updateCartItemQuantity } from './actions'
 import CheckoutForm from './CheckoutForm'
 import ShippingProgress from './ShippingProgress'
 import ReservationCountdown from './ReservationCountdown'
+import SubmitButton from '@/app/components/SubmitButton'
 import { RESERVATION_MINUTES, getReservationCutoffISOString } from '@/lib/cartReservation'
 
 type CartItemRow = {
@@ -103,13 +104,14 @@ export default async function CartPage({
                   <form action={updateCartItemQuantity}>
                     <input type="hidden" name="itemId" value={item.id} />
                     <input type="hidden" name="delta" value="-1" />
-                    <button
-                      type="submit"
+                    <SubmitButton
+                      iconOnly
+                      spinnerSize="sm"
                       aria-label="数量を減らす"
-                      className="h-8 w-8 text-gray-600 transition-colors hover:text-primary dark:text-gray-300"
+                      className="h-8 w-8 text-gray-600 transition-colors hover:text-primary disabled:opacity-40 dark:text-gray-300"
                     >
                       −
-                    </button>
+                    </SubmitButton>
                   </form>
                   <span className="w-6 text-center text-sm font-medium text-foreground">
                     {item.quantity}
@@ -117,24 +119,22 @@ export default async function CartPage({
                   <form action={updateCartItemQuantity}>
                     <input type="hidden" name="itemId" value={item.id} />
                     <input type="hidden" name="delta" value="1" />
-                    <button
-                      type="submit"
+                    <SubmitButton
+                      iconOnly
+                      spinnerSize="sm"
                       aria-label="数量を増やす"
                       disabled={item.quantity >= item.products.stock}
-                      className="h-8 w-8 text-gray-600 transition-colors hover:text-primary disabled:cursor-not-allowed disabled:opacity-30 dark:text-gray-300"
+                      className="h-8 w-8 text-gray-600 transition-colors hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-300"
                     >
                       ＋
-                    </button>
+                    </SubmitButton>
                   </form>
                 </div>
                 <form action={removeFromCart}>
                   <input type="hidden" name="itemId" value={item.id} />
-                  <button
-                    type="submit"
-                    className="rounded-full border border-gray-300 px-3 py-1 text-sm font-medium text-gray-600 transition-colors hover:border-danger hover:text-danger dark:border-gray-700 dark:text-gray-300"
-                  >
+                  <SubmitButton className="rounded-full border border-gray-300 px-3 py-1 text-sm font-medium text-gray-600 transition-colors hover:border-danger hover:text-danger disabled:opacity-60 dark:border-gray-700 dark:text-gray-300">
                     削除
-                  </button>
+                  </SubmitButton>
                 </form>
               </div>
             </li>

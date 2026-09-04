@@ -1,4 +1,5 @@
 import { deleteReview, toggleHelpfulVote } from './actions'
+import SubmitButton from '@/app/components/SubmitButton'
 
 type Review = {
   id: string
@@ -62,17 +63,17 @@ export default function ReviewList({
                 <form action={toggleHelpfulVote}>
                   <input type="hidden" name="reviewId" value={review.id} />
                   <input type="hidden" name="productId" value={productId} />
-                  <button
-                    type="submit"
+                  <SubmitButton
+                    spinnerSize="sm"
                     aria-pressed={votedByMe}
                     className={
                       votedByMe
-                        ? 'rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary'
-                        : 'rounded-full px-2 py-1 text-xs text-gray-500 hover:text-primary dark:text-gray-400'
+                        ? 'rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary disabled:opacity-60'
+                        : 'rounded-full px-2 py-1 text-xs text-gray-500 hover:text-primary disabled:opacity-60 dark:text-gray-400'
                     }
                   >
                     👍 参考になった ({helpfulCount})
-                  </button>
+                  </SubmitButton>
                 </form>
               ) : (
                 <span className="text-xs text-gray-500 dark:text-gray-400">
@@ -83,9 +84,9 @@ export default function ReviewList({
                 <form action={deleteReview}>
                   <input type="hidden" name="reviewId" value={review.id} />
                   <input type="hidden" name="productId" value={productId} />
-                  <button type="submit" className="text-xs text-gray-400 underline hover:text-danger">
+                  <SubmitButton spinnerSize="sm" className="text-xs text-gray-400 underline hover:text-danger disabled:opacity-60">
                     削除
-                  </button>
+                  </SubmitButton>
                 </form>
               )}
             </div>

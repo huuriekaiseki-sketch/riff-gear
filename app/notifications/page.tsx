@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { markRestockNotificationsRead } from '@/lib/restock'
+import SubmitButton from '@/app/components/SubmitButton'
 
 type NotificationRow = {
   id: string
@@ -34,12 +35,9 @@ export default async function NotificationsPage() {
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">お知らせ</h1>
         {hasUnread && (
           <form action={markRestockNotificationsRead}>
-            <button
-              type="submit"
-              className="rounded-full border border-gray-300 px-4 py-1.5 text-sm text-gray-600 transition-colors hover:border-primary/40 hover:text-primary dark:border-gray-700 dark:text-gray-300"
-            >
+            <SubmitButton className="rounded-full border border-gray-300 px-4 py-1.5 text-sm text-gray-600 transition-colors hover:border-primary/40 hover:text-primary disabled:opacity-60 dark:border-gray-700 dark:text-gray-300">
               すべて既読にする
-            </button>
+            </SubmitButton>
           </form>
         )}
       </div>

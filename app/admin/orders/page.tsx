@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { updateOrderStatus, updatePaymentStatus } from './actions'
+import SubmitButton from '@/app/components/SubmitButton'
 import { PAYMENT_STATUS_LABEL } from '@/lib/order-labels'
 import { checkAndNotifyAbandonedCarts } from '@/lib/cartAbandonment'
 import { isOverdueUnshipped } from '@/lib/orderAlerts'
@@ -101,12 +102,12 @@ export default async function AdminOrdersPage() {
                         </option>
                       ))}
                     </select>
-                    <button
-                      type="submit"
-                      className="rounded-full bg-primary px-3 py-1 text-xs font-medium text-white transition-opacity hover:opacity-90"
+                    <SubmitButton
+                      spinnerSize="sm"
+                      className="rounded-full bg-primary px-3 py-1 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60"
                     >
                       更新
-                    </button>
+                    </SubmitButton>
                   </form>
                 </td>
                 <td className="px-6 py-4">
@@ -124,12 +125,12 @@ export default async function AdminOrdersPage() {
                         </option>
                       ))}
                     </select>
-                    <button
-                      type="submit"
-                      className="rounded-full bg-primary px-3 py-1 text-xs font-medium text-white transition-opacity hover:opacity-90"
+                    <SubmitButton
+                      spinnerSize="sm"
+                      className="rounded-full bg-primary px-3 py-1 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60"
                     >
                       更新
-                    </button>
+                    </SubmitButton>
                   </form>
                 </td>
               </tr>

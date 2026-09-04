@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createCoupon, deactivateCoupon } from './actions'
+import SubmitButton from '@/app/components/SubmitButton'
 
 type CouponRow = {
   id: string
@@ -90,12 +91,9 @@ export default async function AdminCouponsPage() {
             />
           </label>
           <div className="sm:col-span-2">
-            <button
-              type="submit"
-              className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
-            >
+            <SubmitButton className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60">
               クーポンを作成
-            </button>
+            </SubmitButton>
           </div>
         </form>
       </section>
@@ -140,12 +138,12 @@ export default async function AdminCouponsPage() {
                   {coupon.active ? (
                     <form action={deactivateCoupon}>
                       <input type="hidden" name="couponId" value={coupon.id} />
-                      <button
-                        type="submit"
-                        className="rounded-full border border-danger px-3 py-1 text-xs font-medium text-danger transition-opacity hover:opacity-80"
+                      <SubmitButton
+                        spinnerSize="sm"
+                        className="rounded-full border border-danger px-3 py-1 text-xs font-medium text-danger transition-opacity hover:opacity-80 disabled:opacity-60"
                       >
                         無効化
-                      </button>
+                      </SubmitButton>
                     </form>
                   ) : (
                     <span className="text-xs text-gray-400">-</span>

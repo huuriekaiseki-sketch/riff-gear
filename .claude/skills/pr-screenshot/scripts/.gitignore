@@ -6,3 +6,6 @@ rects.json
 capture.js
 capture-mock.js
 capture-mock-*.js
+capture-e2e-*.js
+annotate-*.js
+mock-out/

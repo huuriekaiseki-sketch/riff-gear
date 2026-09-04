@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { updateProfile } from './actions'
+import SubmitButton from '@/app/components/SubmitButton'
 
 // 表示名・お届け先住所を編集するページ。未入力のままでも注文はできるため、必須項目はない。
 export default async function ProfilePage() {
@@ -70,12 +71,9 @@ export default async function ProfilePage() {
             className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-700 dark:bg-black"
           />
         </label>
-        <button
-          type="submit"
-          className="w-full rounded-full bg-primary px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
-        >
+        <SubmitButton className="w-full rounded-full bg-primary px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60">
           保存
-        </button>
+        </SubmitButton>
       </form>
     </main>
   )
