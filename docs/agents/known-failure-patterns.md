@@ -67,6 +67,8 @@ Codexレビューや前セッションの引き継ぎメモが「未実装」「
 
 **実例**: V組まい(medical-inventory-vkumai)で製品一覧の削除フローをBefore/Afterで並べた際に発生。`openMock()`が`.first()`のiframeを掴んでいた。riff-gearへ移植した`pr-screenshot/scripts/mock-capture.js`は、この対策として`artboardIndex`を呼び出し側に明示させ、`iframeCount`を返す設計にしてある。
 
+**riff-gearでの追加実例(2026-09-04、PR #136)**: 同じ「ヘルパーが返した画像を信用した」型の失敗が初実戦で3種類出た。(1) iframeが現れた直後に撮ると"Loading artboard…"のプレースホルダが写る(→`readySelector`で撮りたい要素を待つ)、(2) キャンバスがartboardをCSS transformで縮小表示するためマウス座標クリックが要素に当たらず、`onclick`は配線済みなのに状態が変わらない(→DOMの`click()`を使う)、(3) `rect()`をメインページ座標に変換すると`annotate.js`の枠が画像外にずれる(`shoot()`はiframeにクリップして撮るので、iframe内座標のままが正しい)。いずれも**画像を開いて見れば一発で分かる**が、ログのパスだけ見て進めると仕様書に空画面や無反応の画像を貼ることになる。
+
 教訓: **複数artboardを撮るときは`artboardIndex`を明示し、`iframeCount`が期待値か確認し、撮れた画像を必ず目視で確認してから使う**。「ヘルパーが返したパス＝正しい画像」と信用しない。関連して、インタラクティブモックは「作った」だけでは動作確認になっておらず、実際にクリックして状態が変わることを撮影で確かめてから仕様書に貼る(`feature-proposal`Role 3の提示前セルフチェック)。
 
 ### UI差分のあるPRにafter画像しか貼らず、before画像を省略した(2026-08-29、実例あり)
