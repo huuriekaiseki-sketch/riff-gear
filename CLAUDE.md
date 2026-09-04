@@ -1,5 +1,10 @@
 # riff-gear Claude Code instructions
 
+## 共通ハーネス
+
+- Codexと共通の実行・証跡契約は [shared-harness.md](docs/agents/shared-harness.md) を参照する。
+- 依存グラフを固定してCLI実行する計画は `scripts/harness/run.mjs` を使う。`verified_local` をGitHub CI成功と混同しない。
+
 ## 並行作業の開始ゲート
 
 - 編集前に `git status --short --branch`、`git fetch origin main`、`git worktree list` を実行する。
