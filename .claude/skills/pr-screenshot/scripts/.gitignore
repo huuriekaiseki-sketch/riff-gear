@@ -5,3 +5,4 @@ annotated_*.png
 rects.json
 capture.js
 capture-mock.js
+capture-mock-*.js

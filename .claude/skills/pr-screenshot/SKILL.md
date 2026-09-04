@@ -10,7 +10,7 @@ description: riff-gearのUI変更を、枠線・ラベル付きのスクリー�
 見た目に差分が出るUI変更を含むPRでは、**変更後(after)のスクショだけでは不十分**。変更前(before)のスクショも必ず添えて、PR単体で「何がどう変わったか」を画像だけで判断できるようにする。after1枚だけでは、初見の人が「これが変更後の状態」としか分からず、差分そのものが伝わらない。
 
 - before: 変更前の状態を`capture-template.js`で撮る(既存ページなら必ず撮る。新規ページの場合はbefore自体が存在しないため省略可)
-- after: 変更後の状態を`capture-template.js`(実装後)または`capture-mock-template.js`(実装前モック)で撮る
+- after: 変更後の状態を`capture-template.js`(実装後)または`capture-mock-template.js`(実装前の静的モック)・`mock-capture.js`(実装前のインタラクティブモック、状態ごと)で撮る
 - 1枚の画像内で対比できるなら(例: 同じ一覧に強調対象の行と非対象の行が両方映っている)、それをafter画像として使いつつ、それでも独立したbefore画像は別途用意する。「同じ画像の中で対比できているからbefore不要」と判断しない
 - PR本文では画像の見出しに対象パスを明記する: `### 変更前 (app/orders/page.tsx)` / `### 変更後 (app/orders/page.tsx)`。画像自体にページ名バナーは焼き込まない(下記参照)
 
@@ -55,6 +55,34 @@ MOCK_URL=./design-mock/Main.dc.html node capture-mock.js   # ローカルファ�
 - **design skillのartboardはsandboxed iframe内でレンダリングされる**。要素のハイライト用にrectを取る場合は、`capture-mock-template.js`内のコメントにある通り`iframe`の`contentFrame()`経由で取得し、`iframe`自体の位置を加算して絶対座標に変換すること。トップレベルの`document.querySelector()`では見つからない。iframeのマウントには数秒かかるため、`goto`後は最低5〜6秒sleepしてから撮影する
 - `raw_mock.png`ができたら`annotate.js`で注釈する。ページ名バナーは付けない。実装前モックだと分かるようにしたい場合は、貼り付け先(PR本文・SPEC.md)の見出し側に「変更後(実装前モック、対象: /orders)」のように明記する
 - 仕様書(`docs/spec/<機能名>/SPEC.md`)に貼るafter画像として使う。before画像(既存ページの現状)は通常の`capture-template.js`で撮る
+- **クリックで状態が変わるモック**(処理中表示・完了メッセージ・空表示など)は、この静的1枚撮りでは「クリック後」を撮れない。次の`mock-capture.js`を使う
+
+## インタラクティブモックの状態撮影(mock-capture.js)
+
+`design`スキルで`is_interactive: true`にしたartboardや、`<script>`で状態が変わる素のhtmlを、**状態ごとに撮る**ためのヘルパー(`openMock()`)。`feature-proposal`Role 3の「状態設計」(通常/処理中/成功/エラー/権限なし/空)のうち、モック上で再現できる状態を文字の表ではなく画像で残すのが目的。ログイン・DB不要。
+
+```js
+// scripts/capture-mock-<機能名>.js として置く(使い捨て。.gitignore済み)
+const { openMock } = require('./mock-capture.js');
+(async () => {
+  const m = await openMock('/abs/path/to/seeded.html', { artboardIndex: 1, outDir: __dirname });
+  console.log('iframeCount =', m.iframeCount);   // 期待したartboard数か必ず確認する
+  await m.shoot('raw_idle');                      // 通常
+  await m.clickText('削除');                       // frame内のテキストでクリック(同文言が複数なら {nth})
+  await m.shoot('raw_processing');                // 処理中
+  await m.sleep(1200);
+  await m.shoot('raw_done');                      // 成功
+  await m.writeRects({ target: await m.rect('button') }); // annotate.js用の絶対座標(任意)
+  await m.close();
+})();
+```
+
+- `openMock(path, { artboardIndex, outDir, viewport })`は`{ frame, shoot, clickText, rect, writeRects, sleep, iframeCount, close }`を返す。`frame`はpuppeteerの`Frame`なので、`clickText`で足りない操作は`frame.type()`等を直接使ってよい
+- クリック・待機の組み立てはモックごとに違うので、都度短いスクリプトを書く。実装で使うテストコードではなく、**実装前モック撮影のためだけの使い捨て**でよい
+- **Before/Afterを1キャンバスに並べた場合(iframeが複数)は要注意**: DOM順は`canvas.json`のartboards配列の順と一致するとは限らない。`artboardIndex`(0始まり)で対象を明示し、`shoot()`の画像を**必ず目視確認**してから使う(狙いと違うartboardを撮っていても気づかず進めてしまった実例がV組まい側であった。詳細は[known-failure-patterns.md](../../../docs/agents/known-failure-patterns.md))
+- `rect()`はiframeのオフセットを加算した絶対座標を返すので、そのまま`annotate.js`の`boxes[].rect`に渡せる(座標変換は不要)
+- `designスキル`のArtifact URLは開けない(上記と同じ理由)。`seed-canvas.mjs --out`で生成したローカルhtmlを渡す
+- 動作確認済みの環境: puppeteer-core 25.9 + macOS Chrome、`sandbox="allow-scripts"`のiframe内クリック・要素取得・クリップ撮影(2026-09-04)
 
 ## capture-template.jsのパラメータ
 
