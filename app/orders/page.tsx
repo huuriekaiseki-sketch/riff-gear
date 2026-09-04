@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { reorderOrder } from './actions'
+import SubmitButton from '@/app/components/SubmitButton'
 import {
   STATUS_LABEL,
   STATUS_COLOR,
@@ -65,12 +66,9 @@ export default async function OrderHistoryPage() {
               </span>
               <form action={reorderOrder}>
                 <input type="hidden" name="orderId" value={order.id} />
-                <button
-                  type="submit"
-                  className="rounded-lg bg-gradient-to-r from-primary to-secondary px-4 py-2 text-sm font-medium text-white shadow-md transition-all hover:opacity-90"
-                >
+                <SubmitButton className="rounded-lg bg-gradient-to-r from-primary to-secondary px-4 py-2 text-sm font-medium text-white shadow-md transition-all hover:opacity-90 disabled:opacity-60">
                   もう一度買う
-                </button>
+                </SubmitButton>
               </form>
             </div>
           </li>

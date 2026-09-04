@@ -1,0 +1,160 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; font-family: Inter, system-ui, -apple-system, Arial, sans-serif; background: #ffffff; color: #111827; -webkit-font-smoothing: antialiased; }
+    a { color: #3b82f6; } a:hover { color: #2563eb; }
+    select { font: inherit; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { animation: spin 1s linear infinite; }
+    button[disabled] { cursor: wait; }
+  </style>
+</helmet>
+<div style="width: 1152px; padding: 40px 24px; box-sizing: border-box; background: #ffffff;">
+  <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 16px;">
+    <h1 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 600; letter-spacing: -0.025em; color: #111827;">全注文管理</h1>
+    <button type="button" onClick="{{ reset }}" style="border: 1px solid #d1d5db; border-radius: 9999px; background: transparent; padding: 4px 12px; font-size: 12px; color: #6b7280; cursor: pointer;">↺ モックをリセット</button>
+  </div>
+  <p style="margin: 8px 0 0; font-size: 13px; color: #6b7280;">変更後: 押した瞬間にスピナー付きで無効化され、処理完了で通常表示に戻る（二重送信できない）</p>
+  <div style="margin-top: 24px; overflow: hidden; border-radius: 16px; border: 1px solid #e5e7eb; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+      <thead>
+        <tr style="border-bottom: 1px solid #e5e7eb; font-size: 12px; text-transform: uppercase; letter-spacing: 0.025em; color: #6b7280;">
+          <th style="padding: 12px 24px; font-weight: 500;">注文ID</th>
+          <th style="padding: 12px 24px; font-weight: 500;">合計</th>
+          <th style="padding: 12px 24px; font-weight: 500;">ステータス</th>
+          <th style="padding: 12px 24px; font-weight: 500;">支払い</th>
+        </tr>
+      </thead>
+      <tbody>
+        <sc-for list="{{ rows }}" as="row" hint-placeholder-count="2">
+        <tr style="border-bottom: 1px solid #e5e7eb;">
+          <td style="padding: 16px 24px; font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: #6b7280;">{{ row.id }}</td>
+          <td style="padding: 16px 24px; font-weight: 500; color: #111827;">{{ row.total }}</td>
+          <td style="padding: 16px 24px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <select disabled="{{ row.statusPending }}" style="border: 0; border-radius: 9999px; padding: 4px 12px; font-size: 12px; font-weight: 500; background: {{ row.statusBg }}; color: {{ row.statusColor }};">
+                <option>{{ row.statusLabel }}</option>
+              </select>
+              <button type="button" disabled="{{ row.statusPending }}" onClick="{{ row.submitStatus }}" aria-busy="{{ row.statusPending }}" style="display: inline-flex; align-items: center; gap: 6px; border: 0; border-radius: 9999px; background: #3b82f6; color: #ffffff; padding: 4px 12px; font-size: 12px; font-weight: 500; cursor: pointer; opacity: {{ row.statusOpacity }};">
+                <sc-if value="{{ row.statusPending }}" hint-placeholder-val="{{ false }}">
+                  <svg class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" opacity="0.25"></circle><path fill="currentColor" opacity="0.75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                </sc-if>
+                <span>更新</span>
+              </button>
+            </div>
+          </td>
+          <td style="padding: 16px 24px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <select disabled="{{ row.payPending }}" style="border: 0; border-radius: 9999px; padding: 4px 12px; font-size: 12px; font-weight: 500; background: {{ row.payBg }}; color: {{ row.payColor }};">
+                <option>{{ row.payLabel }}</option>
+              </select>
+              <button type="button" disabled="{{ row.payPending }}" onClick="{{ row.submitPay }}" aria-busy="{{ row.payPending }}" style="display: inline-flex; align-items: center; gap: 6px; border: 0; border-radius: 9999px; background: #3b82f6; color: #ffffff; padding: 4px 12px; font-size: 12px; font-weight: 500; cursor: pointer; opacity: {{ row.payOpacity }};">
+                <sc-if value="{{ row.payPending }}" hint-placeholder-val="{{ false }}">
+                  <svg class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" opacity="0.25"></circle><path fill="currentColor" opacity="0.75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                </sc-if>
+                <span>更新</span>
+              </button>
+            </div>
+          </td>
+        </tr>
+        </sc-for>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 style="margin: 40px 0 0; font-size: 18px; line-height: 28px; font-weight: 600; color: #111827;">カート（アイコンボタンの例）</h2>
+  <div style="margin-top: 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-radius: 16px; border: 1px solid #e5e7eb; background: #ffffff; padding: 16px 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+    <div>
+      <p style="margin: 0; font-weight: 500; color: #111827;">Fender Player Stratocaster</p>
+      <p style="margin: 4px 0 0; font-size: 14px; color: #6b7280;">¥85,600</p>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="display: flex; align-items: center; gap: 4px; border-radius: 9999px; border: 1px solid #d1d5db;">
+        <button type="button" disabled="{{ cart.minusPending }}" onClick="{{ cart.minus }}" aria-label="数量を減らす" style="display: inline-flex; align-items: center; justify-content: center; height: 32px; width: 32px; border: 0; background: transparent; color: #4b5563; font-size: 16px; cursor: pointer; opacity: {{ cart.minusOpacity }};">
+          <sc-if value="{{ cart.minusPending }}" hint-placeholder-val="{{ false }}"><svg class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" opacity="0.25"></circle><path fill="currentColor" opacity="0.75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg></sc-if>
+          <sc-if value="{{ cart.minusIdle }}" hint-placeholder-val="{{ true }}"><span>−</span></sc-if>
+        </button>
+        <span style="width: 24px; text-align: center; font-size: 14px; font-weight: 500; color: #111827;">{{ cart.qty }}</span>
+        <button type="button" disabled="{{ cart.plusPending }}" onClick="{{ cart.plus }}" aria-label="数量を増やす" style="display: inline-flex; align-items: center; justify-content: center; height: 32px; width: 32px; border: 0; background: transparent; color: #4b5563; font-size: 16px; cursor: pointer; opacity: {{ cart.plusOpacity }};">
+          <sc-if value="{{ cart.plusPending }}" hint-placeholder-val="{{ false }}"><svg class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" opacity="0.25"></circle><path fill="currentColor" opacity="0.75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg></sc-if>
+          <sc-if value="{{ cart.plusIdle }}" hint-placeholder-val="{{ true }}"><span>＋</span></sc-if>
+        </button>
+      </div>
+      <button type="button" disabled="{{ cart.removePending }}" onClick="{{ cart.remove }}" style="display: inline-flex; align-items: center; gap: 6px; border-radius: 9999px; border: 1px solid #d1d5db; background: transparent; padding: 4px 12px; font-size: 14px; font-weight: 500; color: #4b5563; cursor: pointer; opacity: {{ cart.removeOpacity }};">
+        <sc-if value="{{ cart.removePending }}" hint-placeholder-val="{{ false }}"><svg class="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" opacity="0.25"></circle><path fill="currentColor" opacity="0.75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg></sc-if>
+        <span>削除</span>
+      </button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"delayMs":{"editor":"int","default":1200,"min":300,"max":5000,"step":100,"unit":"ms"}}'>
+const STATUS = {
+  received: { label: '注文受付', bg: 'rgba(139,92,246,0.10)', color: '#8b5cf6' },
+  preparing: { label: '発送準備', bg: 'rgba(217,119,6,0.10)', color: '#d97706' },
+  shipped: { label: '発送済み', bg: 'rgba(22,163,74,0.10)', color: '#16a34a' },
+};
+const PAY = {
+  pending: { label: '未入金', bg: 'rgba(217,119,6,0.10)', color: '#d97706' },
+  paid: { label: '入金済み', bg: 'rgba(22,163,74,0.10)', color: '#16a34a' },
+};
+function initial() {
+  return {
+    rows: [
+      { id: 'a1f3…9c02', total: '¥42,800', status: 'received', pay: 'pending', statusPending: false, payPending: false },
+      { id: '7be0…41aa', total: '¥12,300', status: 'shipped', pay: 'paid', statusPending: false, payPending: false },
+    ],
+    qty: 1,
+    minusPending: false, plusPending: false, removePending: false,
+  };
+}
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = initial(); }
+  delay() { return this.props.delayMs ?? 1200; }
+  // 行ごとに独立した状態を持つ(単一のphase変数にしない)。実装ではuseFormStatusが
+  // <form>単位で独立しているのと同じ粒度。
+  patchRow(i, patch) {
+    this.setState({ rows: this.state.rows.map((r, j) => (j === i ? { ...r, ...patch } : r)) });
+  }
+  renderVals() {
+    const s = this.state;
+    const rows = s.rows.map((r, i) => ({
+      id: r.id, total: r.total,
+      statusLabel: STATUS[r.status].label, statusBg: STATUS[r.status].bg, statusColor: STATUS[r.status].color,
+      payLabel: PAY[r.pay].label, payBg: PAY[r.pay].bg, payColor: PAY[r.pay].color,
+      statusPending: r.statusPending, payPending: r.payPending,
+      statusOpacity: r.statusPending ? 0.6 : 1, payOpacity: r.payPending ? 0.6 : 1,
+      submitStatus: () => {
+        if (r.statusPending) return;
+        this.patchRow(i, { statusPending: true });
+        setTimeout(() => this.patchRow(i, { statusPending: false, status: r.status === 'received' ? 'preparing' : r.status }), this.delay());
+      },
+      submitPay: () => {
+        if (r.payPending) return;
+        this.patchRow(i, { payPending: true });
+        setTimeout(() => this.patchRow(i, { payPending: false, pay: 'paid' }), this.delay());
+      },
+    }));
+    const cart = {
+      qty: s.qty,
+      minusPending: s.minusPending, plusPending: s.plusPending, removePending: s.removePending,
+      minusIdle: !s.minusPending, plusIdle: !s.plusPending,
+      minusOpacity: s.minusPending ? 0.4 : 1, plusOpacity: s.plusPending ? 0.4 : 1, removeOpacity: s.removePending ? 0.6 : 1,
+      minus: () => { if (s.minusPending || s.qty <= 1) return; this.setState({ minusPending: true }); setTimeout(() => this.setState({ minusPending: false, qty: this.state.qty - 1 }), this.delay()); },
+      plus: () => { if (s.plusPending) return; this.setState({ plusPending: true }); setTimeout(() => this.setState({ plusPending: false, qty: this.state.qty + 1 }), this.delay()); },
+      remove: () => { if (s.removePending) return; this.setState({ removePending: true }); setTimeout(() => this.setState({ removePending: false }), this.delay()); },
+    };
+    return { rows, cart, reset: () => this.setState(initial()) };
+  }
+}
+</script>
+</body>
+</html>

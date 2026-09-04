@@ -13,6 +13,7 @@ import RecordView from './RecordView'
 import RelatedProducts from './RelatedProducts'
 import ReviewForm from '@/app/reviews/ReviewForm'
 import ReviewList from '@/app/reviews/ReviewList'
+import SubmitButton from '@/app/components/SubmitButton'
 import { summarizeRatings, countVotesByReviewId, sortReviewsByHelpfulness } from '@/lib/reviews'
 import { pickTopCoPurchasedIds, type CoPurchasedProduct } from '@/lib/co-purchase'
 
@@ -248,12 +249,9 @@ export default async function ProductDetailPage({
           ) : (
             <form action={addToCart} className="mt-6">
               <input type="hidden" name="productId" value={product.id} />
-              <button
-                type="submit"
-                className="rounded-full bg-gradient-to-r from-primary to-secondary px-8 py-2.5 text-sm font-medium text-white shadow-md transition-all duration-150 hover:scale-105 hover:shadow-lg hover:shadow-primary/30"
-              >
+              <SubmitButton className="rounded-full bg-gradient-to-r from-primary to-secondary px-8 py-2.5 text-sm font-medium text-white shadow-md transition-all duration-150 hover:scale-105 hover:shadow-lg hover:shadow-primary/30 disabled:opacity-80 disabled:hover:scale-100">
                 カートに追加
-              </button>
+              </SubmitButton>
             </form>
           )}
           <div className="mt-6">

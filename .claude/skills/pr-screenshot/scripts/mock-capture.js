@@ -16,7 +16,7 @@
 //
 //   const { openMock } = require('./mock-capture.js');
 //   (async () => {
-//     const m = await openMock('/abs/path/to/seeded.html', { artboardIndex: 1, outDir: __dirname });
+//     const m = await openMock('/abs/path/to/seeded.html', { artboardIndex: 1, outDir: __dirname, readySelector: 'table' });
 //     console.log('iframeCount =', m.iframeCount);        // 期待した数か確認する
 //     await m.shoot('raw_idle');                           // 初期状態
 //     await m.clickText('削除');                            // frame内のテキストでクリック
@@ -27,8 +27,8 @@
 //     await m.close();
 //   })();
 //
-// 撮った raw_*.png は annotate.js で枠・ラベルを合成できる(rect()はiframeオフセットを加算済みの
-// 絶対座標を返すので、そのまま annotate.js の boxes に渡せる)。
+// 撮った raw_*.png は annotate.js で枠・ラベルを合成できる(rect()は shoot() の画像座標系、
+// writeRects() の viewport は画像サイズなので、そのまま annotate.js に渡せる)。
 //
 // 環境変数:
 //   CHROME_PATH    Chrome実行ファイル(省略時 macOSデフォルト)
@@ -53,6 +53,11 @@ async function openMock(htmlPath, opts = {}) {
     viewport = { width: 1280, height: 900 },
     artboardIndex = 0,
     mountWaitMs = 8000,
+    // artboard内で「描画完了」とみなすセレクタ。designスキルのartboardは iframe が現れた後も
+    // しばらく "Loading artboard…" のプレースホルダを表示するため、body直下の要素だけを
+    // 待つと空のローディング画面を撮ってしまう(実機で発生)。撮りたい要素を指定する。
+    readySelector = null,
+    settleMs = 500,
   } = opts;
   if (!htmlPath) throw new Error('openMock(htmlPath) requires a path or URL');
   fs.mkdirSync(outDir, { recursive: true });
@@ -83,15 +88,14 @@ async function openMock(htmlPath, opts = {}) {
       await browser.close();
       throw new Error(`iframe #${artboardIndex} has no accessible content frame`);
     }
-    // artboard内の描画完了を待つ(bodyに何か1要素でも入るまで)
-    await frame.waitForSelector('body > *', { timeout: mountWaitMs }).catch(() => null);
+    // artboard内の描画完了を待つ。readySelector指定時はその要素が出るまで待つ
+    await frame.waitForSelector(readySelector || 'body > *', { timeout: mountWaitMs }).catch(() => {
+      console.warn(`[mock-capture] readySelector "${readySelector || 'body > *'}" did not appear within ${mountWaitMs}ms; shooting anyway`);
+    });
+  } else if (readySelector) {
+    await page.waitForSelector(readySelector, { timeout: mountWaitMs }).catch(() => null);
   }
-
-  async function frameOffset() {
-    if (!iframeHandle) return { x: 0, y: 0 };
-    const box = await iframeHandle.boundingBox();
-    return { x: box.x, y: box.y };
-  }
+  await sleep(settleMs); // フォント・アニメーションの初期描画を落ち着かせる
 
   async function shoot(name) {
     const outPath = path.join(outDir, `${name}.png`);
@@ -104,38 +108,73 @@ async function openMock(htmlPath, opts = {}) {
     return outPath;
   }
 
-  // frame内で「そのテキストを含む最小の要素」をクリックする。同じ文言が複数あるときは nth で選ぶ
+  // frame内で「そのテキストを含む最小のノード」を探し、最寄りのクリック可能要素に昇格してクリックする。
+  // 同じ文言が複数あるときは nth で選ぶ。
+  // WHY: ::-p-text() は条件分岐(<sc-if>)や<span>の中の文字だとテキストノード自体を返すことがあり、
+  //      そのまま click() すると "Node is either not clickable or not an Element" で落ちる(実機で発生)。
+  //      ボタンの中の<span>やSVG横のテキストを狙っても、親のbuttonをクリックするように寄せる。
+  //      さらに、DCランタイムは <sc-if> の非表示側の分岐や hint 用の複製を DOM 上に残すことがあり、
+  //      そちらが先にマッチすると bounding box が無く click できない。表示中のものだけを数える。
   async function clickText(text, { nth = 0 } = {}) {
     const handles = await frame.$$(`::-p-text(${text})`);
-    if (handles.length <= nth) {
-      throw new Error(`clickText("${text}") matched ${handles.length} element(s), nth=${nth} not found`);
+    const visible = [];
+    for (const h of handles) {
+      const target = await h.evaluateHandle((node) => {
+        const el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+        return el.closest('button, a, [role="button"], input, select, summary, label') || el;
+      });
+      const el = target.asElement();
+      if (!el) continue;
+      const box = await el.boundingBox();
+      if (!box || box.width === 0 || box.height === 0) continue;
+      // 同じ要素に複数のテキストノードがヒットしても1回だけ数える
+      const dup = await Promise.all(visible.map((v) => frame.evaluate((a, b) => a === b, v, el)));
+      if (dup.some(Boolean)) continue;
+      visible.push(el);
     }
-    await handles[nth].click();
+    if (visible.length <= nth) {
+      throw new Error(`clickText("${text}") matched ${visible.length} visible element(s) (${handles.length} raw), nth=${nth} not found`);
+    }
+    // WHY: designスキルのキャンバスは artboard(iframe) を CSS transform で縮小表示するため、
+    //      puppeteer のマウスクリック(bounding box の中心座標へ送る)が実際の要素からずれ、
+    //      ハンドラが発火しないことがある(実機で発生: onclick は配線済みなのに状態が変わらない)。
+    //      モックの状態遷移を進めるのが目的なので、座標に依存しない DOM の click() を使う。
+    await visible[nth].evaluate((el) => el.click());
   }
 
-  // frame内の要素の rect を、メインページ基準の絶対座標に変換して返す(annotate.js用)
+  // frame内の要素の rect を「shoot()で撮った画像の座標系」で返す(annotate.js用)。
+  // WHY: shoot() は iframe(artboard) の領域にクリップして撮るので、画像の原点は iframe の左上。
+  //      artboard内の getBoundingClientRect() はそのまま画像座標になる(オフセット加算は不要。
+  //      メインページ座標に変換してしまうと annotate.js の枠が画像外にずれる。実機で確認)。
+  //      iframe を持たない素の html の場合はページ全体を撮るので、これもそのまま一致する。
   async function rect(selector, { nth = 0 } = {}) {
     const handles = await frame.$$(selector);
     if (handles.length <= nth) {
       throw new Error(`rect("${selector}") matched ${handles.length} element(s), nth=${nth} not found`);
     }
-    const r = await handles[nth].evaluate((el) => {
+    return handles[nth].evaluate((el) => {
       const b = el.getBoundingClientRect();
       return { x: b.x, y: b.y, width: b.width, height: b.height };
     });
-    const off = await frameOffset();
-    return { x: r.x + off.x, y: r.y + off.y, width: r.width, height: r.height };
+  }
+
+  // annotate.js の viewport には「画像のサイズ」を渡す必要がある。iframe をクリップして撮った
+  // 場合はブラウザのviewportではなく iframe の大きさが画像サイズになる
+  async function imageSize() {
+    if (!iframeHandle) return viewport;
+    const box = await iframeHandle.boundingBox();
+    return { width: Math.round(box.width), height: Math.round(box.height) };
   }
 
   async function writeRects(rects, fileName = 'rects.json') {
     const outPath = path.join(outDir, fileName);
-    fs.writeFileSync(outPath, JSON.stringify({ viewport, ...rects }, null, 2));
+    fs.writeFileSync(outPath, JSON.stringify({ viewport: await imageSize(), ...rects }, null, 2));
     return outPath;
   }
 
   async function close() { await browser.close(); }
 
-  return { page, frame, iframeCount, viewport, shoot, clickText, rect, writeRects, sleep, close };
+  return { page, frame, iframeCount, viewport, imageSize, shoot, clickText, rect, writeRects, sleep, close };
 }
 
 module.exports = { openMock };

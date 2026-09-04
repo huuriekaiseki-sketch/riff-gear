@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { submitReview } from './actions'
+import SubmitButton from '@/app/components/SubmitButton'
 
 // レビュー投稿フォーム。星をクリックして評価を選び、コメントを添えて送信する。
 // 既に自分のレビューがある場合は、その内容を初期値にして「上書き投稿」として振る舞う。
@@ -48,13 +49,12 @@ export default function ReviewForm({
         rows={3}
         className="mt-3 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-transparent"
       />
-      <button
-        type="submit"
+      <SubmitButton
         disabled={rating === 0}
         className="mt-3 rounded-full bg-gradient-to-r from-primary to-secondary px-5 py-2 text-sm font-medium text-white shadow-md transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {initialRating ? '更新する' : '投稿する'}
-      </button>
+      </SubmitButton>
     </form>
   )
 }
