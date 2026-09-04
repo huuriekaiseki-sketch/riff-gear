@@ -7,12 +7,14 @@
 | runner回帰 | 成功 | `node --test scripts/harness/harness.check.mjs`、17件 |
 | 既存hook回帰 | 成功 | `scripts/*.test.sh` 全件。新runnerテストは同じCI入口へ接続 |
 | lint / typecheck | 成功 | `npm run lint` / `npm run typecheck` |
+| 通常build（Turbopack） | 環境制約で失敗 | `instrumentation*.ts` の処理時に補助プロセス用ポート作成が `Operation not permitted`。権限昇格後も再現 |
+| 補助build（webpack） | 成功（警告あり） | `npm run build -- --webpack`。通常buildと同一条件ではないため、CI成功の代替にしない |
 | 実CLIの引数仕様 | 確認済み | インストール済みCLIの `--help` と公式ドキュメントを照合 |
 | Codex/Claudeアダプター | 一部確認 | 偽CLIの実プロセスとstdin/JSON/結果ファイルの結線を確認 |
 | Codex実サービス | 未実施 | 自動承認レビューがCLI実機確認を拒否。非公開repo内容の外部送信先と対象ファイルへの明示承認待ち |
 | Claude実サービス | 未実施 | 同じ外部送信の確認範囲として保留。拒否の迂回として別engineを起動しない |
 | 独立レビュー | 修正後に重要指摘なし | 孫プロセス残存を実再現し、テスト失敗確認後に修正。二回目のレビューで確認 |
-| GitHub CI | PRで確認 | ローカル成功で代替しない。最終報告の対象SHAとPR checksを参照 |
+| GitHub CI | CI未検証 | 自動承認レビューが専用ブランチのpushを拒否。具体的なコードを既存リモートへ送る明示承認待ち。PRも未作成 |
 
 ## 実機確認で承認を得る対象
 
