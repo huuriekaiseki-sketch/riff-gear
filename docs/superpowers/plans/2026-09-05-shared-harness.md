@@ -30,5 +30,6 @@
 
 実装・runner回帰17件・既存hook回帰・lint・型検査まで確認した。
 通常buildは環境のポート作成禁止で失敗。補助のwebpack buildは成功した。
-CLI実機確認とGitHub pushは自動承認レビューに拒否されたため、明示承認待ち。
-CI未検証・PR未作成・未統合。詳細は `docs/agents/shared-harness-acceptance.md`。
+追加の明示承認後にpushしPR #138を作成。両実CLIの読み取り経路が成功した。
+Codexは0.153.4の検証専用PATHでの成功。常用CLI更新とmain統合は未実施。
+CIはPR最新headのChecksで追跡する。詳細は `docs/agents/shared-harness-acceptance.md`。

@@ -7,7 +7,7 @@
 ## 前提と起動
 
 - Node.js 24、Git、利用する `codex` または `claude` CLIのログインが必要。
-- ローカルで確認した版: Codex 0.147.0、Claude Code 2.1.258。別バージョンは実機再確認する。
+- 実サービスで確認した版: Codex 0.153.4、Claude Code 2.1.258。Codex 0.147.0は今回のモデルに非対応だった。実行前に `codex --version` とモデル対応を確認する。検証専用PATHの制約は [検証記録](shared-harness-acceptance.md) を参照。
 - 新しいAPIキー、MCPサーバー、クラウドDBは不要。各CLIの既存認証・設定を利用する。
 - [開始ゲート](parallel-agent-work.md)で最新main・Issue/PR・他セッションを確認し、専用worktreeで開始する。
 - 書き込みは `codex/` / `claude/` の対応ブランチが必要。最初の書き込み実行はcleanであること。
