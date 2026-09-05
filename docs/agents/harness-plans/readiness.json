@@ -1,0 +1,21 @@
+{
+  "task": "harness-readiness",
+  "maxConcurrent": 2,
+  "timeoutMs": 180000,
+  "maxAttempts": 2,
+  "nodes": [
+    {
+      "id": "instructions",
+      "type": "agent",
+      "mode": "read-only",
+      "dependsOn": [],
+      "prompt": "AGENTS.md と CLAUDE.md だけを読み、両者が docs/agents/shared-harness.md を正本として参照しているか確認。両方参照していればpass、片方でも無ければfail。読んだファイル名と根拠をdetailに書く。この工程は狭い読み取り検証なので、追加調査・サブエージェント・別CLI・Workflowを起動しない。"
+    },
+    {
+      "id": "runner-tests",
+      "type": "check",
+      "dependsOn": ["instructions"],
+      "command": ["node", "--test", "scripts/harness/harness.check.mjs"]
+    }
+  ]
+}

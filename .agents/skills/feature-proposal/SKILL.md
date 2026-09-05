@@ -42,7 +42,7 @@ description: 開発者に「このプロダクトにこの機能は必要か？�
 
 通常のPhase 1へ進む前に、親エージェントは各Sweepの「調査対象」に一致する現在のファイルを列挙し、重複を除いてsortしたrepo-relative path配列を軸別の`targetInventory`（`ui`・`data`・`db`・`types`）として固定する。列挙に失敗した場合は`blocked`。Completeness Criticが追加調査対象を返した場合は、実在するrepo-relative fileへ解決して担当軸の`targetInventory`へ追記する。
 
-最大ラウンド数は**3**。親エージェントは各ラウンドで次の4 agentをすべて起動してからjoinし、4体すべての結果が揃うまでCompleteness Criticや次フェーズを起動しない。
+最大ラウンド数は**3**。各ラウンドで次の4役割をすべて実行する。同時起動数は現在利用可能な子agent枠以下に制限し、完了した枠へ未実行の役割を順次投入する。親を含め4枠なら子は最大3体である。4体すべての結果が揃うまでCompleteness Criticや次フェーズを起動しない。枠不足を理由に役割を省略しない。
 
 - `sweep-ui`
 - `sweep-data`
@@ -97,12 +97,12 @@ Sweeper・Finderの結果を踏まえ、実装方針を開発者に確認し、�
 
 **影響層が2つ以上ならCodexネイティブのPhase2を必須で使う**: Role 3で選ばれた層が2つ以上の場合、手動実装への降格を禁止し、以下を親エージェントがオーケストレーションする。各段階で全subagentの完了を待ち、結果を検証してから次へ進む。入力には承認済み方針とRole 1の4軸findingsを含め、Phase 1 Sweepは再実行しない。
 
-開始前に、選択層のimplementer、`integrator`、`reviewer`のcustom agent設定をロードでき、必要数をspawnできることを確認する。custom agentのロード失敗、spawn機能の利用不能、thread上限、または同等の理由でPhase 2の必須agentを開始できないことが開始前・途中を問わず判明したら、`aidd-phase2-blocked(stage=availability)`としてその場で停止し、人間へ理由を報告する。手動実装へ切り替えない。
+開始前に、選択層のimplementer、`integrator`、`reviewer`のcustom agent設定をロードでき、子agent枠が1つ以上あることを確認する。同時枠が役割数より少ない場合は完了待ちと順次投入で全役割を実行する。custom agentのロード失敗、spawn機能の利用不能、利用可能枠が0で解消不能、または同等の理由でPhase 2の必須agentを開始できないことが開始前・途中を問わず判明したら、`aidd-phase2-blocked(stage=availability)`としてその場で停止し、人間へ理由を報告する。手動実装へ切り替えない。
 
 1. 選ばれた層に対応する`implementer-ui`・`implementer-data`・`implementer-db`を並列起動する。各依頼にタスク、承認済み方針、担当層、他agentと同じファイルシステムを共有していることを含める。結果は`status: pass|blocked`、`detail`、`changedFiles`で受け取る
 2. 結果が無い、形式が不正、または1体でも`blocked`なら後続を起動せず、`aidd-phase2-blocked(stage=implement)`としてRole 5へ引き継ぎ、開発者へ報告する
 3. 全実装結果と変更ファイル一覧を`integrator`へ渡して起動し、結線と`build/typecheck/lint/test`を確認させる。結果が無い、形式が不正、または`blocked`なら`aidd-phase2-blocked(stage=integrate)`として停止する
-4. `reviewer`を「正しさ」「仕様網羅」「重複・過剰実装」「型安全」の4観点で並列起動し、それぞれ1観点だけを検証させる
+4. `reviewer`を「正しさ」「仕様網羅」「重複・過剰実装」「型安全」の4観点で利用可能枠の範囲内で起動し、それぞれ1観点だけを検証させる。全4観点の完了を待つ
 5. 4体すべてが`pass`なら`aidd-phase2-pass`とする。`fail`または結果不正があれば指摘を全実装担当へ返し、実装→統合→4観点レビューをやり直す。差し戻しは最大3回とし、解消しなければ`aidd-phase2-blocked(stage=review)`として停止する
 
 影響層が1つだけなら、Role 3の層確認とは別に「親エージェントが手動実装フローで進めてよいか」を人間へ確認し、明示承認を待つ。承認がない限り実装を開始しない。承認後に限り、以下の手動フローを使ってよい。
